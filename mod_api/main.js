@@ -315,7 +315,7 @@ function buildSlowState(){
     buildings:buildings,upgrades_na_loja:upgradesInStore,upgrades_comprados:upgradesBought,
     achievements:achievements,grimorio:grimorio,panteao:panteao,jardim:jardim,bolsa:bolsa,
     dragao:dragao,santa:santa,interruptores:interruptores,legado:legado,
-    save_string:(Game.WriteSave&&Game.prefs&&Game.ready)?Game.WriteSave(1):null
+    save_string:(Game.encode&&Game.toJSON&&Game.prefs&&Game.ready)?(Game.encode(Game.toJSON())+'!END!'):null
   };
 }
 

@@ -461,14 +461,15 @@ header::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:2px
 </head>
 <body>
 <header>
-  <a class="logo" href="/docs">💾 BACKUP CODES</a>
+  <a class="logo" href="/docs"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-2px"><path d="M17 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V7l-4-4zm-5 16a3 3 0 110-6 3 3 0 010 6zm3-10H5V5h10v4z"/></svg> <span data-i18n="title">BACKUP CODES</span></a>
   <div class="vsep"></div>
   <span class="pill pill-b"><span class="pulse"></span>&nbsp;<span id="h-count">—</span></span>
   <span class="pill pill-y" id="h-size">—</span>
   <span class="pill pill-g" id="h-latest">—</span>
   <div class="spacer"></div>
-  <a class="hbtn" href="/charts">← Charts</a>
+  <a class="hbtn" href="/charts" data-i18n="charts_lnk">← Charts</a>
   <a class="hbtn" href="/docs">Docs</a>
+  <button class="hbtn" id="lang-btn" onclick="toggleLang()">PT</button>
   <button class="hbtn" onclick="load()">↻</button>
 </header>
 <div class="page">
@@ -477,25 +478,25 @@ header::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:2px
   <div class="howto">
     <div class="howto-step">
       <div class="step-num">1</div>
-      <div class="step-text">Find the save from the time you want to restore and click <b>COPY CODE</b></div>
+      <div class="step-text" data-i18n="step1">Find the save from the time you want to restore and click <b>COPY CODE</b></div>
     </div>
     <div class="howto-step">
       <div class="step-num">2</div>
-      <div class="step-text">In Cookie Clicker: <b>Options → Export Save</b> area → click <b>Import Save</b></div>
+      <div class="step-text" data-i18n="step2">In Cookie Clicker: <b>Options → Export Save</b> area → click <b>Import Save</b></div>
     </div>
     <div class="howto-step">
       <div class="step-num">3</div>
-      <div class="step-text">Paste the code into the text box and click <b>Load</b>. The game reloads from that point.</div>
+      <div class="step-text" data-i18n="step3">Paste the code into the text box and click <b>Load</b>. The game reloads from that point.</div>
     </div>
     <div class="howto-step">
-      <div class="step-num">ℹ</div>
-      <div class="step-text">Saves are captured every <b>5 minutes</b> automatically. Use <b>Save Now</b> to capture the current state immediately.</div>
+      <div class="step-num"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg></div>
+      <div class="step-text" data-i18n="step4">Saves are captured every <b>5 minutes</b> automatically. Use <b>Save Now</b> to capture the current state immediately.</div>
     </div>
   </div>
 
   <!-- Controls -->
   <div class="ctrl-row">
-    <span class="ctrl-label">SHOW</span>
+    <span class="ctrl-label" data-i18n="show_lbl">SHOW</span>
     <select class="nsel" id="n-sel" onchange="load()">
       <option value="10">Last 10</option>
       <option value="20" selected>Last 20</option>
@@ -503,7 +504,7 @@ header::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:2px
       <option value="100">Last 100</option>
       <option value="200">Last 200</option>
     </select>
-    <button class="save-btn" onclick="saveNow()">⚡ Save Now</button>
+    <button class="save-btn" onclick="saveNow()"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-2px"><path d="M7 2v11h3v9l7-12h-4l4-8z"/></svg> <span data-i18n="save_now">Save Now</span></button>
     <span id="save-status" style="color:var(--dim2);font-size:10px;font-family:'JetBrains Mono',monospace"></span>
   </div>
 
@@ -572,10 +573,24 @@ async function load(){
     document.getElementById('h-size').textContent=info.size_mb+'MB';
     document.getElementById('h-latest').textContent=info.last_ts?'latest '+fmtTsShort(info.last_ts):'no saves';
     var list=document.getElementById('list');
-    if(!saves.length){list.innerHTML='<div id="empty" style="text-align:center;padding:60px;color:var(--dim2);font-family:JetBrains Mono,monospace">No saves yet.<br><br>The game auto-saves every 5 min. Click ⚡ Save Now to capture immediately.</div>';return;}
+    if(!saves.length){list.innerHTML='<div id="empty" style="text-align:center;padding:60px;color:var(--dim2);font-family:JetBrains Mono,monospace">No saves yet.<br><br>The game auto-saves every 5 min. Click Save Now to capture immediately.</div>';return;}
     list.innerHTML=saves.map(renderEntry).join('');
   }catch(e){document.getElementById('list').innerHTML='<div id="empty" style="color:#ff4081;padding:40px;text-align:center;font-family:JetBrains Mono,monospace">Error: '+e.message+'</div>';}
 }
+var _L=localStorage.getItem('cb_lang')||'en';
+var _TR={
+  en:{title:'BACKUP CODES',charts_lnk:'← Charts',step1:'Find the save from the time you want to restore and click <b>COPY CODE</b>',step2:'In Cookie Clicker: <b>Options → Export Save</b> area → click <b>Import Save</b>',step3:'Paste the code into the text box and click <b>Load</b>. The game reloads from that point.',step4:'Saves are captured every <b>5 minutes</b> automatically. Use <b>Save Now</b> to capture the current state immediately.',show_lbl:'SHOW',save_now:'Save Now',last_n:{'10':'Last 10','20':'Last 20','50':'Last 50','100':'Last 100','200':'Last 200'}},
+  pt:{title:'BACKUP CODES',charts_lnk:'← Gr\xe1ficos',step1:'Encontre o save do momento que quer restaurar e clique em <b>COPY CODE</b>',step2:'No Cookie Clicker: \xe1rea <b>Op\xe7\xf5es → Exportar Save</b> → clique em <b>Importar Save</b>',step3:'Cole o c\xf3digo na caixa de texto e clique em <b>Load</b>. O jogo recarrega a partir desse ponto.',step4:'Saves s\xe3o capturados a cada <b>5 minutos</b> automaticamente. Use <b>Salvar Agora</b> para capturar imediatamente.',show_lbl:'EXIBIR',save_now:'Salvar Agora',last_n:{'10':'\xdaltimos 10','20':'\xdaltimos 20','50':'\xdaltimos 50','100':'\xdaltimos 100','200':'\xdaltimos 200'}}
+};
+function _applyLang(){
+  var t=_TR[_L]||_TR.en;
+  document.querySelectorAll('[data-i18n]').forEach(function(el){var k=el.getAttribute('data-i18n');if(t[k]!==undefined)el.innerHTML=t[k];});
+  var ns=document.getElementById('n-sel');
+  if(ns&&t.last_n){var opts=ns.options;for(var i=0;i<opts.length;i++){var v=opts[i].value;if(t.last_n[v])opts[i].text=t.last_n[v];}}
+  var lb=document.getElementById('lang-btn');if(lb)lb.textContent=_L==='en'?'PT':'EN';
+}
+function toggleLang(){_L=_L==='en'?'pt':'en';localStorage.setItem('cb_lang',_L);_applyLang();}
+_applyLang();
 load();
 </script>
 </body>
@@ -642,23 +657,24 @@ canvas{display:block;width:100%!important}
 </head>
 <body>
 <header>
-  <a class="logo" href="/docs">COOKIE BRIDGE — CHARTS</a>
+  <a class="logo" href="/docs" data-i18n="title">COOKIE BRIDGE — CHARTS</a>
   <div class="vsep"></div>
   <span class="pill pill-b"><span class="pulse"></span><span id="h-saves">—</span></span>
   <span class="pill pill-y" id="h-size">—</span>
   <span class="pill pill-g" id="h-mem">—</span>
   <span class="pill pill-p" id="h-up">—</span>
   <div class="spacer"></div>
-  <a class="hbtn" href="/saves">💾 Backup Codes</a>
+  <a class="hbtn" href="/saves"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-2px"><path d="M17 3H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V7l-4-4zm-5 16a3 3 0 110-6 3 3 0 010 6zm3-10H5V5h10v4z"/></svg> <span data-i18n="backup_lnk">Backup Codes</span></a>
   <a class="hbtn" href="/docs">← Docs</a>
-  <button class="hbtn" style="border-color:#ff4444;color:#ff4444" onclick="showReset()">🗑 DB Reset</button>
+  <button class="hbtn" id="lang-btn" onclick="toggleLang()">PT</button>
+  <button class="hbtn" style="border-color:#ff4444;color:#ff4444" onclick="showReset()"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-2px"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg> <span data-i18n="db_reset">DB Reset</span></button>
   <button class="hbtn" onclick="load()">↻</button>
 </header>
 
 <!-- DB Reset modal -->
 <div id="reset-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:none;align-items:center;justify-content:center">
   <div style="background:#07071a;border:1px solid #ff4444;border-radius:12px;padding:28px 32px;max-width:400px;width:90%;position:relative">
-    <div style="color:#ff4444;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:3px;margin-bottom:12px">⚠ DB RESET</div>
+    <div style="color:#ff4444;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:3px;margin-bottom:12px"><svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-2px"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg> DB RESET</div>
     <div style="color:#b0bcd0;font-size:13px;margin-bottom:6px">This will permanently delete <code style="color:#ff4081">saves.ndjson</code> and all save history.</div>
     <div style="color:#6878a0;font-size:11px;margin-bottom:16px">Type <b style="color:#ff4444">db reset</b> to confirm:</div>
     <input id="reset-input" type="text" placeholder="db reset" autocomplete="off"
@@ -685,15 +701,15 @@ document.getElementById('reset-input').addEventListener('input',function(){var o
 
   <!-- ── Combined evolution chart ─────────────────────────────────────────── -->
   <div class="sec">
-    <div class="sec-hd"><div class="sec-title">EVOLUTION — ALL METRICS</div><div class="sec-line"></div></div>
+    <div class="sec-hd"><div class="sec-title" data-i18n="sec_evo">EVOLUTION — ALL METRICS</div><div class="sec-line"></div></div>
     <div class="combo-box">
       <div class="toggles" id="m-toggles"></div>
       <div class="ctrl-bar">
-        <div class="abtn on" id="b-pct" onclick="setNorm('pct')">% Growth from baseline</div>
-        <div class="abtn" id="b-log" onclick="setNorm('log')">Log scale (raw)</div>
+        <div class="abtn on" id="b-pct" onclick="setNorm('pct')" data-i18n="tog_pct">% Growth from baseline</div>
+        <div class="abtn" id="b-log" onclick="setNorm('log')" data-i18n="tog_log">Log scale (raw)</div>
         <div class="ctrl-sep"></div>
-        <div class="abtn" id="b-rel" onclick="setTime('rel')">Relative time</div>
-        <div class="abtn on" id="b-abs" onclick="setTime('abs')">Absolute time</div>
+        <div class="abtn" id="b-rel" onclick="setTime('rel')" data-i18n="tog_rel">Relative time</div>
+        <div class="abtn on" id="b-abs" onclick="setTime('abs')" data-i18n="tog_abs">Absolute time</div>
       </div>
       <canvas id="chart-combined" height="160"></canvas>
     </div>
@@ -701,7 +717,7 @@ document.getElementById('reset-input').addEventListener('input',function(){var o
 
   <!-- ── Individual metric cards ──────────────────────────────────────────── -->
   <div class="sec">
-    <div class="sec-hd"><div class="sec-title">INDIVIDUAL METRICS</div><div class="sec-line"></div></div>
+    <div class="sec-hd"><div class="sec-title" data-i18n="sec_ind">INDIVIDUAL METRICS</div><div class="sec-line"></div></div>
     <div class="chart-grid" id="chart-grid"></div>
   </div>
 </div>
@@ -820,7 +836,18 @@ async function load(){
     drawAll();
   }catch(e){console.error('[charts]',e);}
 }
-buildToggles();buildGrid();load();setInterval(load,30000);
+var _LC=localStorage.getItem('cb_lang')||'en';
+var _TRC={
+  en:{title:'COOKIE BRIDGE — CHARTS',backup_lnk:'Backup Codes',db_reset:'DB Reset',tog_pct:'% Growth from baseline',tog_log:'Log scale (raw)',tog_rel:'Relative time',tog_abs:'Absolute time',sec_evo:'EVOLUTION — ALL METRICS',sec_ind:'INDIVIDUAL METRICS'},
+  pt:{title:'COOKIE BRIDGE — GR\xc1FICOS',backup_lnk:'Backup Codes',db_reset:'Resetar BD',tog_pct:'% Crescimento vs base',tog_log:'Escala log (raw)',tog_rel:'Tempo relativo',tog_abs:'Tempo absoluto',sec_evo:'EVOLU\xc7\xc3O — TODAS AS M\xc9TRICAS',sec_ind:'M\xc9TRICAS INDIVIDUAIS'}
+};
+function _applyCLang(){
+  var t=_TRC[_LC]||_TRC.en;
+  document.querySelectorAll('[data-i18n]').forEach(function(el){var k=el.getAttribute('data-i18n');if(t[k]!==undefined)el.innerHTML=t[k];});
+  var lb=document.getElementById('lang-btn');if(lb)lb.textContent=_LC==='en'?'PT':'EN';
+}
+function toggleLang(){_LC=_LC==='en'?'pt':'en';localStorage.setItem('cb_lang',_LC);_applyCLang();}
+buildToggles();buildGrid();_applyCLang();load();setInterval(load,30000);
 </script>
 </body>
 </html>`;
