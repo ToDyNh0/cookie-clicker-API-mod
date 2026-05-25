@@ -352,7 +352,11 @@ function executeAction(action){
         break;}
       case "sugarlump_use":{
         var slO=Game.Objects[action.build_name];
-        if(slO&&typeof slO.levelUp==='function')slO.levelUp();
+        if(slO&&typeof slO.levelUp==='function'){
+          var _al=Game.prefs.askLumps;Game.prefs.askLumps=0;
+          slO.levelUp();
+          Game.prefs.askLumps=_al;
+        }
         break;}
 
       // Grimório
@@ -429,7 +433,17 @@ function executeAction(action){
 
       // Dragão
       case "dragon_set_aura":{
-        if(typeof Game.SetDragonAura==='function')Game.SetDragonAura(action.aura_id,action.slot||0);
+        var _slot=action.slot||0;
+        var _aid=action.aura_id;
+        var _curAura=_slot===0?Game.dragonAura:Game.dragonAura2;
+        if(_slot===0)Game.dragonAura=_aid;else Game.dragonAura2=_aid;
+        // sacrifice highest owned building (CC aura cost)
+        if(_curAura!==_aid){
+          var _hb=0;
+          for(var _bn in Game.Objects){if(Game.Objects[_bn].amount>0)_hb=Game.Objects[_bn];}
+          if(_hb&&typeof _hb.sacrifice==='function')_hb.sacrifice(1);
+        }
+        Game.recalculateGains=1;Game.upgradesToRebuild=1;
         break;}
 
       // Wrinklers
@@ -444,9 +458,17 @@ function executeAction(action){
 
       // Estação
       case "set_season":{
-        if(Game.seasons&&(action.nome in Game.seasons||action.nome==="")){
-          Game.season=action.nome;
+        var _sn=action.nome;
+        if(_sn===''||_sn===Game.baseSeason){
+          Game.season=Game.baseSeason;Game.seasonT=-1;
+          Game.recalculateGains=1;Game.upgradesToRebuild=1;
+        } else if(Game.seasons&&_sn in Game.seasons){
+          Game.seasonUses=(Game.seasonUses||0)+1;
+          if(typeof Game.computeSeasonPrices==='function')Game.computeSeasonPrices();
+          Game.season=_sn;
           if(typeof Game.getSeasonDuration==='function')Game.seasonT=Game.getSeasonDuration();
+          Game.storeToRefresh=1;Game.upgradesToRebuild=1;Game.recalculateGains=1;
+          if(Game.Objects['Grandma']&&typeof Game.Objects['Grandma'].redraw==='function')Game.Objects['Grandma'].redraw();
         }
         break;}
 
@@ -477,7 +499,8 @@ function executeAction(action){
 
       // Sugar Lump — colheita manual (controla o tipo do próximo lump)
       case "harvest_lump":{
-        if(typeof Game.clickLump==='function')Game.clickLump();
+        if(typeof Game.harvestLumps==='function')Game.harvestLumps(1);
+        else if(typeof Game.clickLump==='function')Game.clickLump();
         break;}
 
       // Venda total de um tipo (combo essencial com Godzamok)

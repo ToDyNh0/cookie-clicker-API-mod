@@ -934,7 +934,7 @@ const ROUTES = [
   ['GET',    /^\/db\/info$/,           (q,s)=>{ try{ if(!fs.existsSync(_DB_FILE)){return _res(s,200,{file:_DB_FILE,count:0,size_bytes:0,size_mb:0,interval_min:_DB_MS/60000,first_ts:null,last_ts:null});} const sz=fs.statSync(_DB_FILE).size; const lines=fs.readFileSync(_DB_FILE,'utf8').split('\n').filter(Boolean); const first=lines.length?JSON.parse(lines[0]):null; const last=lines.length?JSON.parse(lines[lines.length-1]):null; _res(s,200,{file:_DB_FILE,count:lines.length,size_bytes:sz,size_mb:Math.round(sz/1024/1024*100)/100,interval_min:_DB_MS/60000,first_ts:first?first.ts:null,last_ts:last?last.ts:null,last_bakery:last?last.bakery:null}); }catch(e){_res(s,500,{error:e.message});} }],
   ['GET',    /^\/db\/history$/,        (q,s,p,u)=>{ try{ const n=Math.min(parseInt(u.searchParams.get('n')||'500',10),10000); if(!fs.existsSync(_DB_FILE))return _res(s,200,[]); const lines=fs.readFileSync(_DB_FILE,'utf8').split('\n').filter(Boolean); const slice=lines.slice(-n).map(l=>{const e=JSON.parse(l);delete e.save;return e;}); _res(s,200,slice); }catch(e){_res(s,500,{error:e.message});} }],
   ['GET',    /^\/db\/save\/latest$/,   (q,s)=>{ try{ if(!fs.existsSync(_DB_FILE))return _res(s,404,{error:'No saves yet.'}); const lines=fs.readFileSync(_DB_FILE,'utf8').split('\n').filter(Boolean); if(!lines.length)return _res(s,404,{error:'No saves yet.'}); const e=JSON.parse(lines[lines.length-1]); _res(s,200,{ts:e.ts,bakery:e.bakery,run:e.run,prestige:e.prestige,save:e.save}); }catch(e){_res(s,500,{error:e.message});} }],
-  ['POST',   /^\/db\/save\/now$/,      async(q,s)=>{ _runDbSave(); _res(s,200,{ok:true,message:'Save snapshot triggered.',file:_DB_FILE}); }],
+  ['POST',   /^\/db\/save\/now$/,      async(q,s)=>{ if(!_state||!_state.save_string){_res(s,503,{error:'Game state not available. Is Cookie Clicker running with the mod?'});return;} _runDbSave(); _res(s,200,{ok:true,message:'Save snapshot triggered.',file:_DB_FILE}); }],
   ['GET',    /^\/db\/saves$/,         (q,s,p,u)=>{ try{ const n=Math.min(parseInt(u.searchParams.get('n')||'20',10),200); if(!fs.existsSync(_DB_FILE))return _res(s,200,[]); const lines=fs.readFileSync(_DB_FILE,'utf8').split('\n').filter(Boolean); _res(s,200,lines.slice(-n).map(l=>JSON.parse(l)).reverse()); }catch(e){_res(s,500,{error:e.message});} }],
   ['DELETE', /^\/db\/reset$/,         (q,s)=>{ try{ if(fs.existsSync(_DB_FILE)){fs.unlinkSync(_DB_FILE);} _DB_COUNT=0; _res(s,200,{ok:true,message:'Database wiped.',file:_DB_FILE}); }catch(e){_res(s,500,{error:e.message});} }],
   // ── IO ────────────────────────────────────────────────────────────────────
@@ -954,6 +954,7 @@ const ROUTES = [
   ['POST',   /^\/pantheon\/recharge$/,                       async(q,s)=>{ const st=_getState(),pt=st.panteao; if(!pt){_res(s,404,{error:'Pantheon not available.'});return;} const lp=(st.sugar_lumps||{}).disponiveis||0; if(lp<1){_res(s,422,{error:'Sem sugar lumps.'});return;} if((pt.swapsDisponiveis||0)>=3){_res(s,422,{error:'Swaps already at max (3).'});return;} _queue.push({type:'pantheon_recharge'}); _res(s,200,{ok:true,message:'Recarga de worship swaps enfileirada (1 sugar lump).'}); }],
   // ── Jardim ─────────────────────────────────────────────────────────────────
   ['GET',    /^\/garden\/view$/,                             (q,s)=>{ const j=_getState().jardim; if(!j){_res(s,404,{error:'Garden not available. Buy the Farm.'});return;} _res(s,200,Object.assign({},j,{solo_nome:SOIL_NAMES[j.soil||0]||'?'})); }],
+  ['GET',    /^\/garden\/seeds$/,                            (q,s)=>{ const j=_getState().jardim; if(!j){_res(s,404,{error:'Garden not available.'});return;} _res(s,200,(j.seeds||[]).filter(function(s2){return s2.unlocked;}).map(function(s2){return{id:s2.id,name:s2.name};})); }],
   ['POST',   /^\/garden\/plant\/(\d+)\/(\d+)\/(\d+)$/,   async(q,s,p)=>{ const st=_getState(),j=st.jardim; if(!j){_res(s,404,{error:'Garden not available.'});return;} const si=parseInt(p[0],10),x=parseInt(p[1],10),y=parseInt(p[2],10); const seed=(j.seeds||[]).find(s2=>s2.id===si); if(!seed){_res(s,404,{error:`Seed ${si} not found.`});return;} if(!seed.unlocked){_res(s,403,{error:`Seed '${seed.name}' is not yet unlocked.`});return;} const cell=(j.grid||[])[x]&&j.grid[x][y]; if(cell){_res(s,422,{error:`Cell (${x},${y}) is occupied by '${cell.seedName}'.`});return;} _queue.push({type:'garden_plant',seed_index:si,x,y}); _res(s,200,{ok:true,message:`'${seed.name}' enfileirada para (${x},${y}).`}); }],
   ['POST',   /^\/garden\/harvest\/(\d+)\/(\d+)$/,            async(q,s,p)=>{ const st=_getState(),j=st.jardim; if(!j){_res(s,404,{error:'Garden not available.'});return;} const x=parseInt(p[0],10),y=parseInt(p[1],10); const cell=(j.grid||[])[x]&&j.grid[x][y]; if(!cell){_res(s,422,{error:`Cell (${x},${y}) is empty.`});return;} _queue.push({type:'garden_harvest',x,y}); _res(s,200,{ok:true,message:`Colheita de '${cell.seedName}' em (${x},${y}) enfileirada.`,madura:cell.mature}); }],
   ['POST',   /^\/garden\/harvest_all$/,                     async(q,s)=>{ if(!_getState().jardim){_res(s,404,{error:'Garden not available.'});return;} _queue.push({type:'garden_harvest_all'}); _res(s,200,{ok:true,message:'Colheita total enfileirada.'}); }],
@@ -1188,7 +1189,8 @@ function _buildDocs(lang) {
     {m:'POST',   p:'/pantheon/remove/{slot}',               d:'Remove spirit from a slot'},
     {m:'POST',   p:'/pantheon/recharge',                    d:'Spend 1 sugar lump to restore worship swaps to 3'},
     {m:'GET',    p:'/garden/view',                         d:'Full garden grid, seed list and active soil'},
-    {m:'POST',   p:'/garden/plant/{seed}/{x}/{y}',       d:'Plant seed at cell (x, y)'},
+    {m:'GET',    p:'/garden/seeds',                        d:'Unlocked seeds only — id and name, used by the plant dropdown'},
+    {m:'POST',   p:'/garden/plant/{seed}/{x}/{y}',       d:'Plant seed at cell (x, y) — seed is the numeric ID from /garden/seeds'},
     {m:'POST',   p:'/garden/harvest/{x}/{y}',               d:'Harvest plant at cell (x, y)'},
     {m:'POST',   p:'/garden/harvest_all',                  d:'Harvest all plants in the garden'},
     {m:'POST',   p:'/garden/soil/{0-4}',                   d:'Change soil type (0=Normal 1=Fertilizer 2=Clay 3=Pebbles 4=Woodchips)'},
@@ -1332,6 +1334,7 @@ function _buildDocs(lang) {
     '/prefs/set/{name}:name':             ['fancy','filters','milk','cursors','particles','numbers','wobbly','animate','crates','monospace','cookiesound','format','warn','focus','extraButtons','lumpConfirm','screenReader','fastNotes','scary','customGrandmas','autosave','timeout','cloudSave','bgMusic','fullscreen','discordPresence'].map(function(p){return{v:p};}),
     '/action/view/{name}:name':            _BLDS,
     '/action/buy/upgrade/{name}:name':    '__LIVE_UPGRADES__',
+    '/garden/plant/{seed}/{x}/{y}:seed':  '__LIVE_SEEDS__',
     '/action/buy/build/{name}/{n}:name':  _BLDS,
     '/action/sell/build/{name}/{n}:name': _BLDS,
     '/action/view/lvl/{name}:name':       _BLDS,
@@ -1381,6 +1384,11 @@ function _buildDocs(lang) {
             urlHtml += '<select data-param="' + params[i] + '" data-param-for="' + tid + '" data-live="upgrades"' +
               ' style="background:#0d1a2a;border:1px solid #2a4a6a;border-radius:3px;padding:2px 6px;color:#888;font-family:monospace;font-size:12px;cursor:pointer;max-width:260px">' +
               '<option value="">⟳ loading store upgrades…</option>' +
+              '</select>';
+          } else if (opts === '__LIVE_SEEDS__') {
+            urlHtml += '<select data-param="' + params[i] + '" data-param-for="' + tid + '" data-live="seeds"' +
+              ' style="background:#0d1a2a;border:1px solid #2a4a6a;border-radius:3px;padding:2px 6px;color:#888;font-family:monospace;font-size:12px;cursor:pointer;max-width:240px">' +
+              '<option value="">⟳ loading seeds…</option>' +
               '</select>';
           } else if (opts) {
             urlHtml += '<select data-param="' + params[i] + '" data-param-for="' + tid + '"' +
@@ -1846,16 +1854,28 @@ function _buildDocs(lang) {
     '(function(){',
     '  fetch("/state").then(function(r){return r.json();}).then(function(st){',
     '    var ups=(st.upgrades_na_loja||[]);',
-    '    var html=ups.length',
+    '    var uHtml=ups.length',
     '      ?ups.map(function(u){return\'<option value="\'+u.name+\'">\'+u.name+\'</option>\';}).join("")',
     '      :\'<option value="">No upgrades in store right now</option>\';',
     '    document.querySelectorAll(\'select[data-live="upgrades"]\').forEach(function(sel){',
-    '      sel.innerHTML=html;',
-    '      sel.style.color="#f5e642";',
+    '      sel.innerHTML=uHtml;sel.style.color="#f5e642";',
     '    });',
     '  }).catch(function(){',
     '    document.querySelectorAll(\'select[data-live="upgrades"]\').forEach(function(sel){',
-    '      sel.innerHTML=\'<option value="">⚠ game offline — type name manually</option>\';',
+    '      sel.innerHTML=\'<option value="">⚠ game offline</option>\';',
+    '    });',
+    '  });',
+    '  fetch("/garden/seeds").then(function(r){return r.json();}).then(function(d){',
+    '    var seeds=Array.isArray(d)?d:[];',
+    '    var sHtml=seeds.length',
+    '      ?seeds.map(function(s){return\'<option value="\'+s.id+\'">\'+s.id+\' — \'+s.name+\'</option>\';}).join("")',
+    '      :\'<option value="">No seeds discovered yet</option>\';',
+    '    document.querySelectorAll(\'select[data-live="seeds"]\').forEach(function(sel){',
+    '      sel.innerHTML=sHtml;sel.style.color="#f5e642";',
+    '    });',
+    '  }).catch(function(){',
+    '    document.querySelectorAll(\'select[data-live="seeds"]\').forEach(function(sel){',
+    '      sel.innerHTML=\'<option value="">⚠ garden offline</option>\';',
     '    });',
     '  });',
     '})();'
