@@ -1204,7 +1204,8 @@ const ROUTES = [
   ['GET', /^\/visual$/, (q,s)=>{ s.writeHead(200,{'Content-Type':'text/html;charset=utf-8','Cache-Control':'no-cache'}); s.end(VISUAL_HTML); }],
 
   ['GET',    /^\/$/,                                    (q,s)=>_res(s,200,{status:'online',mod:'Cookie Bridge v2.0',timestamp:new Date().toISOString(),jogo_conectado:_state!==null,confeitaria:_state?_state.bakery_name:null,cookies_na_conta:_state?_state.cookies_na_conta:null,docs:`http://localhost:${API_PORT}/docs`})],
-  ['GET',    /^\/docs$/,                                (q,s)=>_resHtml(s,_buildDocs())],
+  ['GET',    /^\/docs$/,                                (q,s)=>_resHtml(s,_buildDocs('en'))],
+  ['GET',    /^\/docs\/pt$/,                            (q,s)=>_resHtml(s,_buildDocs('pt'))],
   ['GET',    /^\/state$/,                               (q,s)=>_res(s,200,_getState())],
   ['GET',    /^\/action\/view\/lvl\/([^\/]+)$/,         (q,s,p)=>{ const st=_getState(),b=_findBuilding(st,p[0]); if(!b){_res(s,404,{error:`Building '${p[0]}' not found.`});return;} const mx=b.name==='Cursor'?20:10,lp=(st.sugar_lumps||{}).disponiveis||0; _res(s,200,{edificio:b.name,nivel_atual:b.level,nivel_maximo:mx,falta_para_maximo:mx-b.level,pode_subir_nivel:b.level<mx,sugar_lumps_disponiveis:lp,pode_usar_agora:lp>=1&&b.level<mx,effect:`+${b.level+1}% CpS at level ${b.level+1}`}); }],
   ['GET',    /^\/action\/view\/([^\/]+)$/,              (q,s,p)=>{ const st=_getState(),b=_findBuilding(st,p[0]); if(b){_res(s,200,{tipo:'edificio',nome:b.name,quantidade_atual:b.amount,nivel:b.level,cps_base:b.baseCps,bloqueado:b.locked,precos_compra:{'1':b.buy_price_1,'10':b.buy_price_10,'100':b.buy_price_100},precos_venda:{'1':b.sell_price_1,'10':b.sell_price_10,'100':b.sell_price_100},pode_comprar:{'1':st.cookies_na_conta>=b.buy_price_1,'10':st.cookies_na_conta>=b.buy_price_10,'100':st.cookies_na_conta>=b.buy_price_100},pode_vender:{'1':b.amount>=1,'10':b.amount>=10,'100':b.amount>=100},tem_minigame:b.has_minigame});return;} const u=_findUpgrade(st,p[0]); if(u){_res(s,200,{tipo:'upgrade',id:u.id,nome:u.name,preco:u.price,pool:u.pool,descricao:u.description,pode_comprar:u.canAfford});return;} _res(s,404,{error:`'${p[0]}' not found.`}); }],
@@ -1298,7 +1299,112 @@ const ROUTES = [
   ['GET',    /^\/action\/next$/,                        (q,s)=>{ let a=null; if(_queue.length>0){const si=_queue.findIndex(x=>x.type==='click_shimmer');a=si>=0?_queue.splice(si,1)[0]:_queue.shift();if(a){_actionLog.push(Object.assign({},a,{_executed_at:Date.now()}));if(_actionLog.length>200)_actionLog.shift();}} if(a){_res(s,200,a);}else{s.writeHead(204,{'Access-Control-Allow-Origin':'*','Content-Length':'0'});s.end();} }],
 ];
 
-function _buildDocs() {
+// ── Portuguese translations ───────────────────────────────────────────────────
+const _PT_ROUTES = {
+  'GET/': 'Verificação de saúde — status do servidor, conexão com o jogo, nome da confeitaria',
+  'GET/docs': 'Documentação em Inglês — esta é a versão em Português',
+  'GET/state': 'Snapshot completo do jogo (atualizado a cada ~500ms pelo mod)',
+  'GET/action/view/{name}': 'Detalhes de prédio ou melhoria pelo nome (não diferencia maiúsculas)',
+  'GET/action/view/upgrade/{name}': 'Busca de melhoria: preço, grupo, descrição, acessibilidade',
+  'GET/action/view/lvl/{name}': 'Info de nível do prédio (upgrades via sugar lump)',
+  'POST/action/buy/upgrade/{name}': 'Comprar uma melhoria da loja pelo nome',
+  'POST/action/buy/build/{name}/{n}': 'Comprar N prédios (n = 1, 10 ou 100)',
+  'POST/action/sell/build/{name}/{n}': 'Vender N prédios',
+  'POST/action/enqueue': 'Adicionar ação JSON à fila FIFO — mod executa em ~500ms. Ver corpo para todos os 30 tipos de ação.',
+  'GET/action/queue': 'Listar ações pendentes na fila',
+  'DELETE/action/queue': 'Limpar toda a fila de ações',
+  'GET/sugarlump/view': 'Contagem de sugar lumps, tipo crescendo e tempo para amadurecer',
+  'POST/sugarlump/use/{build}': 'Usar 1 sugar lump para aumentar o nível de um prédio',
+  'POST/sugarlump/harvest': 'Coletar manualmente um sugar lump (controla o tipo do próximo)',
+  'GET/golden_cookie/view': 'Shimmers atualmente visíveis na tela',
+  'GET/effects/view': 'Buffs temporários ativos (Frenzy, Click Frenzy, etc.)',
+  'GET/grimoire/view': 'Estado do grimório: mana, mana máxima, todos os feitiços com custo',
+  'POST/grimoire/cast/{idx}': 'Lançar feitiço pelo índice idx (0–8)',
+  'POST/grimoire/recharge': 'Gastar 1 sugar lump para restaurar a mana ao máximo',
+  'GET/pantheon/view': 'Estado do panteão: slots, trocas disponíveis, todos os espíritos',
+  'POST/pantheon/set/{spirit}/{slot}': 'Colocar espírito no slot (0=Diamante 100%, 1=Rubi 50%, 2=Jade 25%)',
+  'POST/pantheon/remove/{slot}': 'Remover espírito de um slot',
+  'POST/pantheon/recharge': 'Gastar 1 sugar lump para restaurar as trocas de adoração para 3',
+  'GET/garden/view': 'Grade completa do jardim, lista de sementes e solo ativo',
+  'POST/garden/plant/{seed}/{x}/{y}': 'Plantar semente na célula (x, y)',
+  'POST/garden/harvest/{x}/{y}': 'Colher planta na célula (x, y)',
+  'POST/garden/harvest_all': 'Colher todas as plantas do jardim',
+  'POST/garden/soil/{0-4}': 'Mudar tipo de solo (0=Normal 1=Fertilizante 2=Argila 3=Cascalho 4=Lascas)',
+  'GET/stock/view': 'Todos os ativos com preço, delta e valor de repouso',
+  'GET/stock/view/{ticker}': 'Detalhes de um ativo específico pelo símbolo ticker',
+  'GET/stock/analysis': 'Ativos abaixo do valor de repouso ordenados por desconto (oportunidades de compra)',
+  'POST/stock/buy/{ticker}/{n}': 'Comprar N unidades de um ativo',
+  'POST/stock/sell/{ticker}/{n}': 'Vender N unidades do portfólio',
+  'GET/dragon/view': 'Nível do dragão, auras ativas e dicionário completo de auras',
+  'POST/dragon/set_aura/{id}/{slot}': 'Definir aura id no slot (0=primária, 1=secundária; nível≥20 para slot 1)',
+  'POST/dragon/upgrade': 'Evoluir o dragão (custa cookies e/ou prédios)',
+  'GET/santa/view': 'Nível e nome do Papai Noel',
+  'POST/santa/upgrade': 'Evoluir o Papai Noel (requer temporada de Natal)',
+  'GET/wrinklers/view': 'Wrinklers ativos, cookies acumulados e flag de brilhante',
+  'POST/wrinklers/pop/{id}': 'Estourar wrinkler pelo id (0–11), libera cookies sucados × 1.1',
+  'POST/wrinklers/pop_all': 'Estourar todos os wrinklers ativos de uma vez',
+  'GET/season/view': 'Temporada atual, tempo restante e temporadas disponíveis',
+  'POST/season/set/{name}': 'Trocar temporada ativa (requer melhoria Season Switcher)',
+  'GET/volume/view': 'Níveis de volume atuais de SFX e música',
+  'POST/volume/set/{sfx|music}/{0-100}': 'Ajustar nível de volume',
+  'POST/volume/mute/{building}': 'Alternar estado mudo para o som de um prédio',
+  'GET/prefs/view': 'Todas as 26 preferências do jogo com estado atual',
+  'POST/prefs/set/{name}': 'Alternar uma preferência ligado/desligado pelo nome',
+  'GET/prestige/view': 'Resumo de prestígio: chips, ascensões, bônus % de CpS',
+  'GET/legacy/view': 'Dados completos de legado: prestígio, chips, cookies para o próximo prestígio',
+  'GET/legacy/upgrades': 'Todas as melhorias celestiais com preço, status e acessibilidade',
+  'POST/legacy/buy_heavenly/{id}': 'Comprar uma melhoria celestial com heavenly chips',
+  'POST/legacy/ascend': 'PERIGO: Ascender — reinicia a corrida atual (requer {confirmar:true})',
+  'POST/legacy/reincarnate': 'Reencarnar após a tela de ascensão',
+  'GET/stats': 'Todas as estatísticas com fontes Game.* documentadas — prestígio, chips, CpS raw/global, cookies, ascensões, prédios, dragão, santa, lumps, wrinklers, grimório, FPS',
+  'POST/action/sell_all/{name}': 'Vender TODOS os prédios de um tipo (combo Godzamok — tipicamente com espírito Reaper of Fields)',
+  'POST/game/save': 'Forçar salvamento imediato do jogo no disco (use antes de ações arriscadas)',
+  'GET/backup': 'Tirar snapshot JSON manual do estado atual → salvo na pasta cookie_bridge_backups/',
+  'GET/history/states?n=10': 'Últimos N snapshots de estado do jogo na memória (buffer circular, máx 60)',
+  'GET/history/actions?n=50': 'Últimas N ações executadas com timestamps (buffer circular, máx 200)',
+  'GET/db/info': 'Metadados do banco — caminho, contagem de entradas, tamanho, intervalo, timestamps',
+  'GET/db/history?n=500': 'Estatísticas históricas do banco (sem string de save). Até 10.000 entradas',
+  'GET/db/save/latest': 'String de save mais recente (base64, igual ao Export Save do jogo) — use para restaurar',
+  'POST/db/save/now': 'Acionar snapshot imediato no banco (sem esperar o intervalo de 5min)',
+  'GET/db/saves?n=20': 'Últimas N entradas COM strings base64 completas, mais recente primeiro (máx 200)',
+  'DELETE/db/reset': 'PERIGO: Deletar permanentemente o banco saves.ndjson. Irreversível.',
+  'GET/io': 'Estatísticas em tempo real do processo Node.js — heap, RAM SO, CPUs, uptime',
+  'GET/charts': 'Página de gráficos de evolução — CpS, cookies, prédios, melhorias, legado ao longo do tempo',
+  'GET/saves': 'Página de Códigos de Backup — strings de save por snapshot de 5min. Copie e cole no Import Save',
+};
+const _PT_SECT = {
+  'System & State':'Sistema & Estado','Buildings & Upgrades':'Prédios & Melhorias',
+  'Sugar Lumps':'Sugar Lumps','Golden Cookies & Buffs':'Cookies Dourados & Buffs',
+  'Grimoire':'Grimório','Pantheon':'Panteão','Garden':'Jardim',
+  'Stock Market':'Mercado de Ações','Dragon':'Dragão','Santa':'Papai Noel',
+  'Wrinklers':'Wrinklers','Seasons':'Temporadas','Volume & Audio':'Volume & Áudio',
+  'Preferences':'Preferências','Legacy & Prestige':'Legado & Prestígio',
+  'Stats':'Estatísticas','Misc & History':'Misc & Histórico','Database & IO':'Banco de Dados & IO',
+};
+const _PT_SDESC = {
+  'System & State': '<b>GET /</b> confirma conexão com servidor e jogo. <b>GET /state</b> retorna snapshot completo com ~60 campos, mesclado do estado rápido (a cada ~500ms: cookies, CpS, buffs, shimmers) e estado lento (a cada ~5s: prédios, minijogos, dragão, legado). Use <b>GET /stats</b> para visão anotada de todos os campos numéricos.',
+  'Buildings & Upgrades': 'Todos os 20 prédios do <b>Cursor</b> ao <b>You</b>. Compre e venda em lotes de 1, 10 ou 100. <b>GET /action/view/{name}</b> mostra preço atual, acessibilidade e valor de venda. Melhorias são desbloqueios únicos comprados da loja — aplicam permanentemente até a ascensão.',
+  'Sugar Lumps': 'Um lump amadurece a cada ~24h. Gastar um aumenta o nível de um prédio em +1 (máx nível 10; Cursor máx 20), concedendo +1% CpS permanente por nível. Use <b>POST /sugarlump/harvest</b> para coletar manualmente (controla o tipo do próximo lump).',
+  'Golden Cookies & Buffs': 'Shimmers aparecem aleatoriamente e somem após ~13s. Clique via <b>POST /action/enqueue {type:"click_shimmer", index:0}</b>. Efeitos comuns — <b>Frenzy</b>: ×7 CpS por 77s &nbsp;·&nbsp; <b>Click Frenzy</b>: ×777 CpC por 13s &nbsp;·&nbsp; <b>Lucky</b>: cookies instantâneos. Buffs ativos com tempo restante estão em <b>GET /effects/view</b>.',
+  'Grimoire': 'Desbloqueia quando Wizard Tower alcança nível 1 (1 sugar lump). Mana regenera com o tempo até <code>magicMax</code>. Feitiços principais — <b>idx 0 Conjure Baked Goods</b>: cookies instantâneos &nbsp;·&nbsp; <b>idx 1 Force the Hand of Fate</b>: força cookie dourado a aparecer. Chance de falha = déficit de mana + <code>failChnc</code> base do feitiço.',
+  'Pantheon': 'Desbloqueia quando Temple alcança nível 1. Coloque até 3 espíritos: Diamante (100%), Rubi (50%), Jade (25%). Trocar custa 1 adoração (recarrega para 3 com 1 sugar lump). Combo — <b>Godzamok</b> (slot 0) multiplica CpC pelo número de tipos de prédios vendidos; combine com <b>Reaper of Fields</b> no jardim.',
+  'Garden': 'Desbloqueia quando Farm alcança nível 1. Grade cresce com o nível de sugar lump do Farm (3×3 → 6×6). Plante sementes da lista descoberta; plantas mudam quando dois tipos maduros são adjacentes. Solo 1 (Fertilizante) maximiza crescimento; solo 3 (Cascalho) maximiza descoberta de mutações.',
+  'Stock Market': 'Desbloqueia quando Bank alcança nível 1. 18 ativos com valor de repouso; preço oscila em torno dele. <b>GET /stock/analysis</b> ordena oportunidades de compra por desconto (%). Compre quando preço está bem abaixo do repouso, venda acima.',
+  'Dragon': 'Sacrifique cookies e/ou prédios para evoluir Krumblor do nível 0 ao 20. <b>Aura 11 Radiant Appetite</b> dobra o CpS base. <b>Aura 6 Dragonflight</b> faz cookies dourados concederem ×1111 CpC por 10s. Nível 20 desbloqueia ambos os slots simultaneamente.',
+  'Santa': 'Ative primeiro a temporada de Natal (<b>POST /season/set/christmas</b>). Evolua por 14 níveis (<b>POST /santa/upgrade</b>). Último nível desbloqueia a melhoria <b>Santa\'s legacy</b>.',
+  'Wrinklers': 'Até 12 wrinklers podem se agarrar ao cookie. Reduzem CpS bruto em ~5% cada, mas acumulam cookies e retornam ×1.1 ao serem estourados. Estratégia: estoure durante <b>Frenzy × Elder Frenzy</b>. Wrinklers brilhantes (~0.01%) retornam ×3.3.',
+  'Seasons': 'Eventos sazonais duram até serem trocados manualmente. Cada um desbloqueia melhorias exclusivas (Natal: Papai Noel/renas; Halloween; Páscoa: ovos; Valentines). Melhoria Season Switcher permite troca no meio de uma corrida.',
+  'Volume & Audio': 'SFX e música são trilhas independentes (0–100 cada). <b>POST /volume/mute/{building}</b> silencia o som ambiente de um prédio. Útil em automações onde o áudio do jogo interfere.',
+  'Preferences': '26 preferências booleanas. Maioria cosmética. <b>screenReader</b> ativa modo de acessibilidade por teclado. <b>cloudSave</b> alterna Steam Cloud. <b>focus</b> reduz FPS quando a janela está desfocada.',
+  'Legacy & Prestige': '<b>Prestígio</b> = <code>floor(cbrt(totalCookiesBaked / 1e12))</code> — cada nível = +1% CpS permanente. <b>Ascender</b> reinicia prédios e cookies mas rende Heavenly Chips. <b>GET /legacy/view</b> mostra os chips que você ganharia agora.',
+  'Stats': 'Snapshot anotado de cada campo numérico com sua variável <code>Game.*</code> fonte. Inclui objeto <code>_sources</code> explicando a origem de cada valor.',
+  'Misc & History': '<b>POST /action/sell_all/{name}</b> vende todos os prédios de um tipo (combos Godzamok). <b>POST /game/save</b> força salvamento. Buffers circulares na memória: últimos 60 snapshots de estado (<b>/history/states</b>) e 200 registros de ação (<b>/history/actions</b>).',
+  'Database & IO': '<a href="/charts" target="_blank" style="color:#00e5ff;font-weight:bold;font-size:13px">📈 Abrir Gráficos — evolução e análise de renascimentos →</a><br><br>Salva automaticamente a cada <b>5 min</b> em <code>%USERPROFILE%/CookieBridge/saves.ndjson</code>. Cada entrada = estatísticas + string de save completa. <b>/db/info</b> → metadados. <b>/db/saves</b> → entradas com código de save. <b>/db/save/latest</b> → último save para restaurar.',
+};
+
+function _buildDocs(lang) {
+  if (!lang) lang = 'en';
+  function RD(r) { return lang === 'pt' ? (_PT_ROUTES[r.m + r.p] || r.d) : r.d; }
   const IMG_GOLD = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGAAAABgCAMAAADVRocKAAAAYFBMVEWQYzXhyW/QsFRzSiutjkr579bo04TTt21cOSKccTr05LisgT3q2KzBm0ecfk2oi2rbxIh/WTTKtIPHpU+0pIXEqWnv25lEKRnjzpm7j0G4mlyMlFeAdUTZvl7///////94/aVlAAAAIHRSTlP/////////////////////////////////////////AFxcG+0AAA8ySURBVHjazFqLlqSotgRETURQktIUFM///+WNwKxH16N7Zu6ctY49049cVTvYr9ixscR//suP+N8BeNxuj9t/EaBpmhshbk0jQmhu/y7AEabDi4MgjZg6mY2ocP8GAE7sp/s4tOc5KiOEKus5rL0WAmiPx+P/B3BrQhDTiadtz3mWXbFZ1n92yjpC3P4E8VuARvhuWmYYHLb72PfL3JdladtxGLpVdp0P4vYnL8TvTj/B9jz39/v9ZZpkzvO5DnJZ7vOwdrC/FiuQ7sdvc/EjQDheXnD0+9LLPHlvrNfLdsLwkuNSpJQdUFRJiBNT/yPIDwA3Qes4/0tWvcZBRZum+3lusyxRSyVLRwTgGJGEn5DyHyDE9z112R+2CUc/+2MPYrG5xkupqLSOakWIulKU9npu4Zf5AUF8az/UyjlfskdT9SmEJfS9RJYXJbVTVi/9opYenxWXNZCH1ovvm0/8aH8c5/vLGBjiwF9BeB910tY7mkSyl34deiXdMp7tKf33LnwFeKBX8Q0DSuc+FsOOFcIEARCB0CTjfb6vqFLUbVdiKXIZhmFd/dF819vi+/Ov430e7+PZ6YAyFIiEQUXCDTx+God1lneUFBJSlJLdOmyd3vfjmyiJL/abaRja+d7L86UdN2kCXAhSwpCgF8H7DqbRD7mTyjlAAGA7F30YFb76IL601wTWOZeMameeO5VQ5U0QBhUjECtTzjvMLchtXuQS49KjIdpV5cOX0nyhDvElPiNqYs5Jd/llGLteRRInMi1w3qNE4yXKd5m01otEeS4F1lccZLd2k19dEJ/i4xH/bV6yTamLqJMSra100NzC4W1RJvh+7fJ0TgsMS/T0CmbqZHQHAEzzmZrE5/ijWRfEtaRU8rJIlI2ylTQJEphokQlQUKogDlDG2pKZyq59slp8RhC/2gf53LO2yVmr0FhnV5xWFhVY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';
   const IMG_CURSOR = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAA2ZpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuMy1jMDExIDY2LjE0NTY2MSwgMjAxMi8wMi8wNi0xNDo1NjoyNyAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wTU09Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9tbS8iIHhtbG5zOnN0UmVmPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvc1R5cGUvUmVzb3VyY2VSZWYjIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtcE1NOk9yaWdpbmFsRG9jdW1lbnRJRD0ieG1wLmRpZDpDMzU2NTE2M0Q5NzVFNTExQTUxREMwREIzNTlBMzU3RCIgeG1wTU06RG9jdW1lbnRJRD0ieG1wLmRpZDo1QUVFOUIwOTc1REIxMUU1OUFCMkY0OTI2MDhEQ0EzRCIgeG1wTU06SW5zdGFuY2VJRD0ieG1wLmlpZDo1QUVFOUIwODc1REIxMUU1OUFCMkY0OTI2MDhEQ0EzRCIgeG1wOkNyZWF0b3JUb29sPSJBZG9iZSBQaG90b3Nob3AgQ1M2IChXaW5kb3dzKSI+IDx4bXBNTTpEZXJpdmVkRnJvbSBzdFJlZjppbnN0YW5jZUlEPSJ4bXAuaWlkOkM4NTY1MTYzRDk3NUU1MTFBNTFEQzBEQjM1OUEzNTdEIiBzdFJlZjpkb2N1bWVudElEPSJ4bXAuZGlkOkMzNTY1MTYzRDk3NUU1MTFBNTFEQzBEQjM1OUEzNTdEIi8+IDwvcmRmOkRlc2NyaXB0aW9uPiA8L3JkZjpSREY+IDwveDp4bXBtZXRhPiA8P3hwYWNrZXQgZW5kPSJyIj8+qDK1swAABPhJREFUeNrsWk9II1cY/8ZmtSjICtu4+K+QuFjNmhSsh9KVsGT/YFLavS8F8SY9eCu9Lb1I2ZuHrqC9lT3HlhJZd3vYdktx6x6UKgUbwbZs1a6blNJoapPpfM/5hplxTN4kb8aD74OP95JM8ub3+37v997MRFFVFc5yNMAZD0mAJEASwB/nXu2KapnWE/u+nqyiKFEt03pGhfworgLV8mpXC8tAU2e6XC6rmNjXsuLxPL/tJrVIj4+PqyMjI/giLeI33U6BWyf0/YpbiUQCWltbhY0vPUASUKeFnJYhgvIKmqJaryHWRcC/+7/BD0++xrm4Yibjuz/P+7AinINUKgW9vb3a+MpKrWTUPQWGhmKOZGgk+KKKvr4+UBqanMiICiXgbvoJNxkaEaATEfVzVhAZGhGgExGtiwCtghNaYjXVt6+8yw1m4PIbRMIndW58JvRq6hVVIJ/PV/1e76VLGglhrvGrKeDe7vNVwNQrapn/9v5+sWi8Fw71iFir701NTUF/f79e0QBkMhn2QXI0YRxE/VK5bLwXCoW4xueaAufb2iyA7YHACfxf+V+gWCgIk/XGxgYDk0olmfM7BQIn8DdvXoVyqSTMBGPBjijkczn24uOPPnQET4HARYLH8TOZBWhpaTlSVfh1R/AUCNwNeB4CVokEjPffG3WsuhPw7OavIq5TVnd2tmOPH38LyWQSLrYHHavuBLxQ2Be2DCIJ88+erTCXNwMn8Ob456DI8suvFvDlvCAS5peWliASGbAAJ/AWRZTKLLPZTa7xKxJwePA7de9oq0BVuSNwik/vfobNoqCpcOfBg0W4PDhYUe4InOKP7W2u8asqQCeBqWD9p59PBG4Gv/18hzxjRtAlO1PBj0+fQmdHx4lVN4qDhVJL+L0ZEVPAooJKwIv7BZYkf10FIFIFsVjsRODlcoklr/y5CRh5LW+ogMzNDJzAY+Ryf4uWv0UFy8vL0N3dbQFO4JliD//jln8t1wJMBU5VJ/AUouTvpILBweixqhP4I7b45O+KAH1ru0rSsgM3g/dA/hYVbG5uQldXpwU4gd/b23O1+ihungzpV3cTWt6osM2c1+U3Y1pFRN4Y5RqfVwGKfDQmb4lJAiQBkgBJgCRAEiAJkATwRTgcVjFP64TpNrnICwzuDIVC6sHBS5bYF/38n+P/Aeq1awm1p6dbPTp1//8fcOoxNjYGkUi/9ABREajny3YvyGazim8nHgiA3Qs0SSu+KmB6ehrW15dZH1s/DbKxsRGGh4dhdPQGNDc3g+YLNRlkA0+VnUAh+OvX3zH6FESE164fiUTgwoU2o4++YCZCCAEIBAEhQDsoAm/u47EPH34vdMnTXB+CwSDro+zv3/+CfUbgzf14/Aq0t18UPwUQIEmdgoDaWy9iaOhNJnWUPcWLFznHVqgHoKkNDLxlkTeBnZycPNaKDjS1R4++gcPDklFhAru2tnas9WQZtJPgdxAJt29/wHX81taWN6sAj8RJCV4sh3Nzn1c9BpWwu7vrajnkviuMJmh2fgSLfXOL4RUBaILxeFxz+iYDLJqfucXqe0aAEwnmyuN7OFW83AzZSTBXHklYWFh0vRlytRNEcESCObDq9ve88gMkYXZ2VpsSc8acx6rjUlkTqW4fjDhtcogYP7bDTpscIqaW7bB8MiTvCEkCJAGSAEmAJEASIAmQBJzR+F+AAQB1yUpCWzb2kQAAAABJRU5ErkJggg==';
   const IMG_GRANDMA = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABABAMAAABYR2ztAAAAMFBMVEXhwJbKa0FRgLAzSnXUwbyIw+KQgHebNByTBR/NOmCbdEZkOh/////KsXwgDgr///9ZrsXmAAAAEHRSTlP///////////////////8A4CNdGQAAAapJREFUSMft1TFLxDAUAOBEkG5Ha4cOStGWroc2zoIQbhIHIZuIQzlwOXRyu8nhbnEUC/4D0R+gKIguLv4Ap7ZIewgm/+Cd1hukmrwbnASzZOjHe+G9l4aMpyzyD/4qkFMAdJVEQcl7XYUASB46vIcAWXKedJQRQMITzhFQbvDOOqEI4J3EJsSXyphil86Ec3FoAuOSumxjefXeCMDeJ2zlbs1cqNyxCPUUUurKdg77za40mwUHxPoMADdK327p+JP9XA8gyGbqL3Bxq09RkKXZVg2er/QRsrtI1ODVCOgEvJ1f6lNkcyLy6yNMA18ZvhVq0RXRTuMIP8B29NQ4QhMUi268xRTcXOuBDIgbia21fP5aaQeGxcQVQoSZ1dJPVMho/BEhXPJ8fbuLkLIgCONqXxkmqqCMsbidO8o0MDQQoq1Amiaq8ipZ9ZG7uUBzlftmUBEcgE28TGUtMziw+wQDY2lJHIxlTqXtYz+x3AdHYSDzgf4OlD3oouBlEzgG4GhzxCVy/Ucne6fd9BgBafo4PDtVZjBM02GKABgMBqPBMfYc1Ev95kHRrHf9IkavDH5TCgAAAABJRU5ErkJggg==';
@@ -1354,7 +1460,8 @@ function _buildDocs() {
 
   const routes = [
     {m:'GET',    p:'/',                                    d:'Healthcheck — server status, game connection, bakery name'},
-    {m:'GET',    p:'/docs',                                d:'This documentation page'},
+    {m:'GET',    p:'/docs',                                d:'This documentation page (English)'},
+    {m:'GET',    p:'/docs/pt',                             d:'Documentação em Português — mesma referência completa em PT-BR'},
     {m:'GET',    p:'/state',                               d:'Full game snapshot (updated every ~500ms by the mod)'},
     {m:'GET',    p:'/action/view/{name}',                  d:'Building or upgrade details by name (case-insensitive)'},
     {m:'GET',    p:'/action/view/upgrade/{name}',          d:'Upgrade-only lookup: price, pool, description, affordability'},
@@ -1523,7 +1630,7 @@ function _buildDocs() {
   const sectionHtml = sections.map(function(sec) {
     const sRoutes = routes.filter(sec.filter);
     if (!sRoutes.length) return '';
-    const desc = SECTION_DESCS[sec.title] || '';
+    const desc = (lang === 'pt' ? _PT_SDESC[sec.title] : null) || SECTION_DESCS[sec.title] || '';
 
     const rows = sRoutes.map(function(r, idx) {
       const tid = (sec.title.replace(/[^a-zA-Z0-9]/g, '') + idx);
@@ -1568,7 +1675,7 @@ function _buildDocs() {
       return '<tr style="border-bottom:1px solid #0d0d1a">' +
         '<td style="padding:8px 10px;white-space:nowrap;width:74px">' + badge(r.m) + '</td>' +
         '<td style="padding:8px 10px;font-family:\'Courier New\',monospace;font-size:12px;color:#5bc8f5;word-break:break-all">' + r.p + '</td>' +
-        '<td style="padding:8px 10px;font-size:12px;color:#bbb">' + r.d + '</td>' +
+        '<td style="padding:8px 10px;font-size:12px;color:#bbb">' + RD(r) + '</td>' +
         '<td style="padding:8px 10px;text-align:right;white-space:nowrap">' +
         '<button data-tid="' + tid + '" onclick="toggleTest(\'' + tid + '\')" ' +
         'style="background:#0d0d2a;border:1px solid #2a2a4a;color:#888;border-radius:4px;padding:4px 12px;font-size:11px;cursor:pointer;transition:all 0.15s">&#x25b6; Test</button>' +
@@ -1577,15 +1684,15 @@ function _buildDocs() {
 
     return '<section style="margin-bottom:36px">' +
       '<div style="display:flex;align-items:baseline;gap:10px;border-bottom:1px solid #2a2a4a;padding-bottom:8px;margin-bottom:8px">' +
-      '<h2 style="color:#f5e642;font-size:15px;margin:0">' + sec.icon + ' ' + sec.title + '</h2>' +
-      '<span style="color:#555;font-size:11px">' + sRoutes.length + ' route' + (sRoutes.length !== 1 ? 's' : '') + '</span>' +
+      '<h2 style="color:#f5e642;font-size:15px;margin:0">' + sec.icon + ' ' + (lang === 'pt' ? (_PT_SECT[sec.title] || sec.title) : sec.title) + '</h2>' +
+      '<span style="color:#555;font-size:11px">' + sRoutes.length + (lang === 'pt' ? ' rota' : ' route') + (sRoutes.length !== 1 ? 's' : '') + '</span>' +
       '</div>' +
       (desc ? '<p style="color:#666;font-size:12px;margin-bottom:12px;line-height:1.6">' + desc + '</p>' : '') +
       '<table style="width:100%;border-collapse:collapse;background:#0a0a18;border-radius:8px;overflow:hidden">' +
       '<thead><tr style="background:#0d0d2a;border-bottom:1px solid #1a1a3a">' +
-      '<th style="padding:6px 10px;text-align:left;font-size:10px;color:#444;font-weight:600;letter-spacing:0.5px">METHOD</th>' +
-      '<th style="padding:6px 10px;text-align:left;font-size:10px;color:#444;font-weight:600;letter-spacing:0.5px">PATH</th>' +
-      '<th style="padding:6px 10px;text-align:left;font-size:10px;color:#444;font-weight:600;letter-spacing:0.5px">DESCRIPTION</th>' +
+      '<th style="padding:6px 10px;text-align:left;font-size:10px;color:#444;font-weight:600;letter-spacing:0.5px">' + (lang==='pt'?'MÉTODO':'METHOD') + '</th>' +
+      '<th style="padding:6px 10px;text-align:left;font-size:10px;color:#444;font-weight:600;letter-spacing:0.5px">' + (lang==='pt'?'CAMINHO':'PATH') + '</th>' +
+      '<th style="padding:6px 10px;text-align:left;font-size:10px;color:#444;font-weight:600;letter-spacing:0.5px">' + (lang==='pt'?'DESCRIÇÃO':'DESCRIPTION') + '</th>' +
       '<th style="padding:6px 10px;font-size:10px;color:#444;font-weight:600;letter-spacing:0.5px"></th>' +
       '</tr></thead>' +
       '<tbody>' + rows + '</tbody>' +
@@ -1993,11 +2100,11 @@ function _buildDocs() {
   var scriptContent = scriptLines.join('\n');
 
   return `<!DOCTYPE html>
-<html lang="en">
+<html lang="${lang}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Cookie Bridge API</title>
+<title>Cookie Bridge API${lang==='pt'?' — Português':''}</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:#0d0d1a;color:#e0e0e0;font-family:'Segoe UI',Arial,sans-serif;min-height:100vh}
@@ -2018,11 +2125,12 @@ code{background:#1a1a2e;padding:1px 6px;border-radius:3px;color:#5bc8f5;font-fam
   <img src="${IMG_GOLD}" style="width:64px;height:64px;image-rendering:pixelated;filter:drop-shadow(0 0 14px rgba(245,230,66,0.7))" alt="Cookie">
   <div>
     <h1 style="color:#f5e642;font-size:26px;font-weight:bold;letter-spacing:1px">Cookie Bridge API</h1>
-    <p style="color:#888;font-size:13px;margin-top:4px">v2.0 &nbsp;·&nbsp; HTTP server embedded in Electron &nbsp;·&nbsp; <a href="http://localhost:${p}">http://localhost:${p}</a></p>
+    <p style="color:#888;font-size:13px;margin-top:4px">v2.0 &nbsp;·&nbsp; ${lang==='pt'?'Servidor HTTP embutido no Electron':'HTTP server embedded in Electron'} &nbsp;·&nbsp; <a href="http://localhost:${p}">http://localhost:${p}</a></p>
   </div>
   <div style="margin-left:auto;display:flex;align-items:center;gap:10px">
-    <button onclick="toggleLiveView()" id="btn-live" style="background:#0d1a2e;color:#5bc8f5;border:1px solid #1a4d8f;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:bold;cursor:pointer;transition:all 0.2s"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M21 2H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h7v2H8v2h8v-2h-2v-2h7c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H3V4h18v12z"/></svg> Live View</button>
-    <span id="status-badge" style="background:#1a1a2e;color:#888;border:1px solid #333;padding:4px 14px;border-radius:20px;font-size:12px;font-weight:bold">checking...</span>
+    <a href="${lang==='pt'?'/docs':'/docs/pt'}" style="background:#0d1a0d;color:#69ff47;border:1px solid #1a4a1a;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:bold;cursor:pointer;transition:all 0.2s;text-decoration:none">${lang==='pt'?'🇺🇸 EN':'🇧🇷 PT'}</a>
+    <button onclick="toggleLiveView()" id="btn-live" style="background:#0d1a2e;color:#5bc8f5;border:1px solid #1a4d8f;padding:5px 14px;border-radius:20px;font-size:12px;font-weight:bold;cursor:pointer;transition:all 0.2s"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M21 2H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h7v2H8v2h8v-2h-2v-2h7c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H3V4h18v12z"/></svg> ${lang==='pt'?'Visão ao Vivo':'Live View'}</button>
+    <span id="status-badge" style="background:#1a1a2e;color:#888;border:1px solid #333;padding:4px 14px;border-radius:20px;font-size:12px;font-weight:bold">${lang==='pt'?'verificando...':'checking...'}</span>
   </div>
 </header>
 
@@ -2032,7 +2140,7 @@ code{background:#1a1a2e;padding:1px 6px;border-radius:3px;color:#5bc8f5;font-fam
 <!-- LIVE VIEW PANEL -->
 <div id="live-panel" style="display:none;margin-bottom:28px;background:#070713;border:1px solid #1a3a5f;border-radius:12px;padding:0;overflow:hidden">
   <div style="background:linear-gradient(90deg,#0a1628 0%,#0d1f3c 100%);border-bottom:1px solid #1a3a5f;padding:12px 20px;display:flex;align-items:center;justify-content:space-between">
-    <div style="display:flex;align-items:center;gap:8px;color:#5bc8f5;font-size:13px;font-weight:600;letter-spacing:0.5px"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M21 2H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h7v2H8v2h8v-2h-2v-2h7c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H3V4h18v12z"/></svg> LIVE GAME VIEW</div>
+    <div style="display:flex;align-items:center;gap:8px;color:#5bc8f5;font-size:13px;font-weight:600;letter-spacing:0.5px"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M21 2H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h7v2H8v2h8v-2h-2v-2h7c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H3V4h18v12z"/></svg> ${lang==='pt'?'VISÃO AO VIVO DO JOGO':'LIVE GAME VIEW'}</div>
     <div style="display:flex;align-items:center;gap:8px">
       <span id="live-ts" style="color:#445;font-size:10px"></span>
       <button onclick="pauseLiveView()" id="btn-live-pause" style="background:#0a1628;color:#556;border:1px solid #1a2a40;padding:3px 10px;border-radius:4px;font-size:10px;cursor:pointer;letter-spacing:0.5px">&#x25a0; PAUSE</button>
@@ -2040,31 +2148,34 @@ code{background:#1a1a2e;padding:1px 6px;border-radius:3px;color:#5bc8f5;font-fam
     </div>
   </div>
   <div id="live-content" style="padding:16px 20px">
-    <div style="color:#445;font-size:12px">Connecting...</div>
+    <div style="color:#445;font-size:12px">${lang==='pt'?'Conectando...':'Connecting...'}</div>
   </div>
 </div>
 
 <!-- HOW IT WORKS -->
 <section style="margin-bottom:28px;background:#0a0a18;border:1px solid #1a1a3a;border-radius:10px;padding:20px 24px">
-  <h2 style="color:#f5e642;font-size:14px;margin-bottom:14px;letter-spacing:0.5px"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg> HOW IT WORKS</h2>
+  <h2 style="color:#f5e642;font-size:14px;margin-bottom:14px;letter-spacing:0.5px"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg> ${lang==='pt'?'COMO FUNCIONA':'HOW IT WORKS'}</h2>
   <ol style="color:#bbb;font-size:13px;line-height:2.1;padding-left:20px">
-    <li>The <b>Cookie Bridge mod</b> runs inside Cookie Clicker (Electron renderer process)</li>
+    ${lang==='pt'?`<li>O <b>mod Cookie Bridge</b> roda dentro do Cookie Clicker (processo renderer do Electron)</li>
+    <li>A cada ~500ms o mod <b>envia o estado completo do jogo</b> para <code>POST /state</code></li>
+    <li>Sua automação lê o estado via <code>GET /state</code> e enfileira ações via os endpoints POST abaixo</li>
+    <li>O mod consulta <code>GET /action/next</code> e executa a ação enfileirada no jogo</li>`:`<li>The <b>Cookie Bridge mod</b> runs inside Cookie Clicker (Electron renderer process)</li>
     <li>Every ~500 ms the mod <b>pushes the full game state</b> to <code>POST /state</code></li>
     <li>Your automation reads state via <code>GET /state</code> and enqueues actions via the POST endpoints below</li>
-    <li>The mod polls <code>GET /action/next</code> and executes the queued action in the game</li>
+    <li>The mod polls <code>GET /action/next</code> and executes the queued action in the game</li>`}
   </ol>
   <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
     <div style="flex:1;min-width:220px;background:#0d1a0d;border:1px solid #1a3a1a;border-radius:6px;padding:10px 14px">
-      <div style="color:#2d9e54;font-size:10px;font-weight:700;margin-bottom:4px;letter-spacing:0.5px">FAST STATE — every 500 ms</div>
+      <div style="color:#2d9e54;font-size:10px;font-weight:700;margin-bottom:4px;letter-spacing:0.5px">${lang==='pt'?'ESTADO RÁPIDO — a cada 500ms':'FAST STATE — every 500 ms'}</div>
       <div style="color:#666;font-size:11px">cookies &nbsp;·&nbsp; CpS &nbsp;·&nbsp; buffs &nbsp;·&nbsp; shimmers &nbsp;·&nbsp; wrinklers &nbsp;·&nbsp; volume</div>
     </div>
     <div style="flex:1;min-width:220px;background:#0d0d2a;border:1px solid #1a1a4a;border-radius:6px;padding:10px 14px">
-      <div style="color:#5bc8f5;font-size:10px;font-weight:700;margin-bottom:4px;letter-spacing:0.5px">SLOW STATE — every 5 s or after any action</div>
-      <div style="color:#666;font-size:11px">buildings &nbsp;·&nbsp; upgrades &nbsp;·&nbsp; minigames &nbsp;·&nbsp; dragon &nbsp;·&nbsp; santa &nbsp;·&nbsp; prefs &nbsp;·&nbsp; legacy</div>
+      <div style="color:#5bc8f5;font-size:10px;font-weight:700;margin-bottom:4px;letter-spacing:0.5px">${lang==='pt'?'ESTADO LENTO — a cada 5s ou após qualquer ação':'SLOW STATE — every 5 s or after any action'}</div>
+      <div style="color:#666;font-size:11px">${lang==='pt'?'prédios &nbsp;·&nbsp; melhorias &nbsp;·&nbsp; minijogos &nbsp;·&nbsp; dragão &nbsp;·&nbsp; santa &nbsp;·&nbsp; prefs &nbsp;·&nbsp; legado':'buildings &nbsp;·&nbsp; upgrades &nbsp;·&nbsp; minigames &nbsp;·&nbsp; dragon &nbsp;·&nbsp; santa &nbsp;·&nbsp; prefs &nbsp;·&nbsp; legacy'}</div>
     </div>
     <div style="flex:1;min-width:220px;background:#1a0d0d;border:1px solid #3a1a1a;border-radius:6px;padding:10px 14px">
-      <div style="color:#e67e22;font-size:10px;font-weight:700;margin-bottom:4px;letter-spacing:0.5px">OFFLINE BACKOFF</div>
-      <div style="color:#666;font-size:11px">On server error the mod waits 5 s before retrying (visible in the in-game panel)</div>
+      <div style="color:#e67e22;font-size:10px;font-weight:700;margin-bottom:4px;letter-spacing:0.5px">${lang==='pt'?'RECONEXÃO AUTOMÁTICA':'OFFLINE BACKOFF'}</div>
+      <div style="color:#666;font-size:11px">${lang==='pt'?'Em caso de erro o mod aguarda 5s antes de tentar novamente (visível no painel do jogo)':'On server error the mod waits 5 s before retrying (visible in the in-game panel)'}</div>
     </div>
   </div>
 </section>
@@ -2073,15 +2184,15 @@ code{background:#1a1a2e;padding:1px 6px;border-radius:3px;color:#5bc8f5;font-fam
 <div style="display:flex;gap:12px;margin-bottom:28px;flex-wrap:wrap">
   <div style="flex:1;min-width:120px;background:#0d0d2a;border:1px solid #2a2a4a;border-radius:10px;padding:16px 18px">
     <div style="color:#f5e642;font-size:30px;font-weight:bold">${routes.length}</div>
-    <div style="color:#555;font-size:11px;margin-top:4px">Total Endpoints</div>
+    <div style="color:#555;font-size:11px;margin-top:4px">${lang==='pt'?'Total de Endpoints':'Total Endpoints'}</div>
   </div>
   <div style="flex:1;min-width:120px;background:#0d1a0d;border:1px solid #1a4a1a;border-radius:10px;padding:16px 18px">
     <div style="color:#2d9e54;font-size:30px;font-weight:bold">${routes.filter(function(r){return r.m==='GET';}).length}</div>
-    <div style="color:#555;font-size:11px;margin-top:4px">GET — read-only</div>
+    <div style="color:#555;font-size:11px;margin-top:4px">GET — ${lang==='pt'?'somente leitura':'read-only'}</div>
   </div>
   <div style="flex:1;min-width:120px;background:#0d0d2a;border:1px solid #1a2a4a;border-radius:10px;padding:16px 18px">
     <div style="color:#4a8fd4;font-size:30px;font-weight:bold">${routes.filter(function(r){return r.m==='POST';}).length}</div>
-    <div style="color:#555;font-size:11px;margin-top:4px">POST — actions</div>
+    <div style="color:#555;font-size:11px;margin-top:4px">POST — ${lang==='pt'?'ações':'actions'}</div>
   </div>
   <div style="flex:1;min-width:120px;background:#1a0d0d;border:1px solid #4a1a1a;border-radius:10px;padding:16px 18px">
     <div style="color:#c0392b;font-size:30px;font-weight:bold">${routes.filter(function(r){return r.m==='DELETE';}).length}</div>
@@ -2091,37 +2202,37 @@ code{background:#1a1a2e;padding:1px 6px;border-radius:3px;color:#5bc8f5;font-fam
 
 <!-- BUILDINGS REFERENCE -->
 <section style="margin-bottom:28px">
-  <h2 style="color:#f5e642;font-size:14px;border-bottom:1px solid #1a1a2e;padding-bottom:7px;margin-bottom:12px;letter-spacing:0.5px"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17 11V3H7v4H3v14h8v-4h2v4h8V11h-4zm-6 4H9v-2h2v2zm0-4H9V9h2v2zm0-4H9V5h2v2zm6 8h-2v-2h2v2zm0-4h-2V9h2v2z"/></svg> BUILDINGS REFERENCE (${buildings.length})</h2>
-  <p style="color:#555;font-size:12px;margin-bottom:12px">Use English names (case-insensitive) in all building endpoints — e.g. <code>Farm</code>, <code>Wizard tower</code>, <code>You</code></p>
+  <h2 style="color:#f5e642;font-size:14px;border-bottom:1px solid #1a1a2e;padding-bottom:7px;margin-bottom:12px;letter-spacing:0.5px"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17 11V3H7v4H3v14h8v-4h2v4h8V11h-4zm-6 4H9v-2h2v2zm0-4H9V9h2v2zm0-4H9V5h2v2zm6 8h-2v-2h2v2zm0-4h-2V9h2v2z"/></svg> ${lang==='pt'?'REFERÊNCIA DE PRÉDIOS':'BUILDINGS REFERENCE'} (${buildings.length})</h2>
+  <p style="color:#555;font-size:12px;margin-bottom:12px">${lang==='pt'?'Use nomes em inglês (sem distinção de maiúsculas) em todos os endpoints de prédios — ex: <code>Farm</code>, <code>Wizard tower</code>, <code>You</code>':'Use English names (case-insensitive) in all building endpoints — e.g. <code>Farm</code>, <code>Wizard tower</code>, <code>You</code>'}</p>
   <div style="display:flex;flex-wrap:wrap;gap:8px">${buildingCards}</div>
 </section>
 
 <!-- MINIGAMES -->
 <section style="margin-bottom:28px">
-  <h2 style="color:#f5e642;font-size:14px;border-bottom:1px solid #1a1a2e;padding-bottom:7px;margin-bottom:12px;letter-spacing:0.5px"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/></svg> MINIGAMES</h2>
-  <p style="color:#555;font-size:12px;margin-bottom:12px">Each minigame unlocks when the parent building reaches <b>level 1</b> (cost: 1 sugar lump).</p>
+  <h2 style="color:#f5e642;font-size:14px;border-bottom:1px solid #1a1a2e;padding-bottom:7px;margin-bottom:12px;letter-spacing:0.5px"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M4 6h16v2H4zm0 5h16v2H4zm0 5h16v2H4z"/></svg> ${lang==='pt'?'MINI-JOGOS':'MINIGAMES'}</h2>
+  <p style="color:#555;font-size:12px;margin-bottom:12px">${lang==='pt'?'Cada mini-jogo desbloqueia quando o prédio pai alcança o <b>nível 1</b> (custo: 1 sugar lump).':'Each minigame unlocks when the parent building reaches <b>level 1</b> (cost: 1 sugar lump).'}</p>
   <div style="display:flex;flex-wrap:wrap;gap:12px">${minigameHtml}</div>
 </section>
 
 <!-- SPECIAL ENTITIES -->
 <section style="margin-bottom:28px">
-  <h2 style="color:#f5e642;font-size:14px;border-bottom:1px solid #1a1a2e;padding-bottom:7px;margin-bottom:12px;letter-spacing:0.5px"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg> SPECIAL ENTITIES</h2>
+  <h2 style="color:#f5e642;font-size:14px;border-bottom:1px solid #1a1a2e;padding-bottom:7px;margin-bottom:12px;letter-spacing:0.5px"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg> ${lang==='pt'?'ENTIDADES ESPECIAIS':'SPECIAL ENTITIES'}</h2>
   <div style="display:flex;flex-wrap:wrap;gap:12px">
     <div style="display:flex;align-items:center;gap:12px;background:#0d0d2a;border:1px solid #2a2a4a;border-radius:8px;padding:12px 16px;flex:1;min-width:200px">
       <div style="width:48px;height:48px;flex-shrink:0;background-image:url(${IMG_DRAGON});background-size:432px 48px;background-position:0 0;background-repeat:no-repeat;image-rendering:pixelated"></div>
-      <div><div style="color:#f5e642;font-weight:bold;font-size:13px">Krumblor (Dragon)</div><div style="color:#666;font-size:11px;margin-top:3px">Level 0–20 &nbsp;·&nbsp; 2 aura slots &nbsp;·&nbsp; GET /dragon/view</div></div>
+      <div><div style="color:#f5e642;font-weight:bold;font-size:13px">Krumblor (${lang==='pt'?'Dragão':'Dragon'})</div><div style="color:#666;font-size:11px;margin-top:3px">${lang==='pt'?'Nível':'Level'} 0–20 &nbsp;·&nbsp; 2 aura slots &nbsp;·&nbsp; GET /dragon/view</div></div>
     </div>
     <div style="display:flex;align-items:center;gap:12px;background:#0d0d2a;border:1px solid #2a2a4a;border-radius:8px;padding:12px 16px;flex:1;min-width:200px">
       <div style="width:48px;height:48px;flex-shrink:0;background-image:url(${IMG_SANTA});background-size:720px 48px;background-position:0 0;background-repeat:no-repeat;image-rendering:pixelated"></div>
-      <div><div style="color:#f5e642;font-weight:bold;font-size:13px">Santa Claus</div><div style="color:#666;font-size:11px;margin-top:3px">Level 0–14 &nbsp;·&nbsp; Requires Christmas &nbsp;·&nbsp; GET /santa/view</div></div>
+      <div><div style="color:#f5e642;font-weight:bold;font-size:13px">${lang==='pt'?'Papai Noel':'Santa Claus'}</div><div style="color:#666;font-size:11px;margin-top:3px">${lang==='pt'?'Nível':'Level'} 0–14 &nbsp;·&nbsp; ${lang==='pt'?'Requer Natal':'Requires Christmas'} &nbsp;·&nbsp; GET /santa/view</div></div>
     </div>
     <div style="display:flex;align-items:center;gap:12px;background:#0d0d2a;border:1px solid #2a2a4a;border-radius:8px;padding:12px 16px;flex:1;min-width:200px">
       <div style="width:48px;height:48px;flex-shrink:0;background-image:url(${IMG_WRINKLER});background-size:48px 96px;background-position:0 0;background-repeat:no-repeat;image-rendering:pixelated"></div>
-      <div><div style="color:#f5e642;font-weight:bold;font-size:13px">Wrinklers</div><div style="color:#666;font-size:11px;margin-top:3px">Up to 12 active &nbsp;·&nbsp; ×1.1 return &nbsp;·&nbsp; GET /wrinklers/view</div></div>
+      <div><div style="color:#f5e642;font-weight:bold;font-size:13px">Wrinklers</div><div style="color:#666;font-size:11px;margin-top:3px">${lang==='pt'?'Até 12 ativos':'Up to 12 active'} &nbsp;·&nbsp; ×1.1 ${lang==='pt'?'retorno':'return'} &nbsp;·&nbsp; GET /wrinklers/view</div></div>
     </div>
     <div style="display:flex;align-items:center;gap:12px;background:#0d0d2a;border:1px solid #2a2a4a;border-radius:8px;padding:12px 16px;flex:1;min-width:200px">
       <div style="width:48px;height:48px;flex-shrink:0;background-image:url(${IMG_SUGARLUMP});background-size:48px 48px;background-position:0 0;background-repeat:no-repeat;image-rendering:pixelated"></div>
-      <div><div style="color:#f5e642;font-weight:bold;font-size:13px">Sugar Lumps</div><div style="color:#666;font-size:11px;margin-top:3px">Ripens in ~24 h &nbsp;·&nbsp; Level buildings &nbsp;·&nbsp; GET /sugarlump/view</div></div>
+      <div><div style="color:#f5e642;font-weight:bold;font-size:13px">Sugar Lumps</div><div style="color:#666;font-size:11px;margin-top:3px">${lang==='pt'?'Amadurece em ~24h':'Ripens in ~24 h'} &nbsp;·&nbsp; ${lang==='pt'?'Sobe nível de prédios':'Level buildings'} &nbsp;·&nbsp; GET /sugarlump/view</div></div>
     </div>
   </div>
 </section>
@@ -2131,7 +2242,7 @@ ${sectionHtml}
 </main>
 
 <footer style="border-top:1px solid #111;padding:14px 32px;text-align:center;color:#333;font-size:11px">
-  Cookie Bridge v2.0 &nbsp;·&nbsp; <a href="http://localhost:${p}">http://localhost:${p}</a> &nbsp;·&nbsp; Click <b>&#x25b6; Test</b> on any route to try it live
+  Cookie Bridge v2.0 &nbsp;·&nbsp; <a href="http://localhost:${p}">http://localhost:${p}</a> &nbsp;·&nbsp; ${lang==='pt'?'Clique em <b>&#x25b6; Test</b> em qualquer rota para testar ao vivo':'Click <b>&#x25b6; Test</b> on any route to try it live'}
 </footer>
 
 <script>${scriptContent}</script>

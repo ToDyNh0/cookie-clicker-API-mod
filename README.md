@@ -45,7 +45,7 @@ An always-on floating panel inside the game showing real-time stats.
 
 ---
 
-### 📡 REST API — 52+ Endpoints
+### 📡 REST API — 70+ Endpoints
 
 Every piece of game state is readable. Every action is writable.
 
