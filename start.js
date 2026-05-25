@@ -41,9 +41,9 @@ const PREF_MAP = {
   cloudSave:{d:'Steam Cloud save',inv:false},bgMusic:{d:'Play background music',inv:false},
   fullscreen:{d:'Fullscreen (Steam only)',inv:false},discordPresence:{d:'Discord Rich Presence',inv:false}
 };
-const DRAGON_AURAS = {0:'None',1:'Earth Shatterer (sell buildings for 50% refund)',2:'Master of Armory (upgrades-2%)',3:'Fierce Hoarder (buildings cost -2%)',4:'Dragon God (+5% CpS per prestige level)',5:'Arcane Aura (golden+5%)',6:'Dragonflight (golden cookie → ×1111 CpC for 10 s)',7:'Ancestral Metamorphosis (golden cookies give +10% more)',8:'Unholy Dominion (wrath+10%)',9:'Epoch Manipulator (golden cookie duration +5%)',10:'Mind Over Matter (drops+25%)',11:'Radiant Appetite (×2 CpS)',12:"Dragon's Fortune (+123% CpS per golden cookie on screen)",13:"Dragon's Curve (sugar lumps ripen +5% faster)",14:'Reality Bending (10% de todas as auras)',15:'Dragon Orbs (sell a building → grant a wish)',16:'Supreme Intellect (boost minigames)',17:'Dragon Guts (wrinklers work faster)'};
+const DRAGON_AURAS = {0:'No aura',1:'Breath of Milk (kittens +5% effective)',2:'Dragon Cursor (clicking +5% powerful)',3:'Elder Battalion (grandmas +1% CpS per non-grandma building)',4:'Reaper of Fields (golden cookies may trigger Dragon Harvest)',5:'Earth Shatterer (buildings sell for 50% refund)',6:'Master of the Armory (upgrades cost -2%)',7:'Fierce Hoarder (buildings cost -2%)',8:'Dragon God (+5% prestige CpS effect)',9:'Arcane Aura (golden cookies +5% more frequent)',10:'Dragonflight (golden cookie → ×1111 CpC for 10 s)',11:'Ancestral Metamorphosis (golden cookies give +10% more)',12:'Unholy Dominion (wrath cookies give +10% more)',13:'Epoch Manipulator (golden cookie duration +5%)',14:'Mind Over Matter (random drops +25% more common)',15:'Radiant Appetite (×2 all cookie production)',16:"Dragon's Fortune (+123% CpS per golden cookie on screen)",17:"Dragon's Curve (sugar lumps ripen +5% faster)",18:'Reality Bending (10% of every other aura combined)',19:'Dragon Orbs (sell most expensive building → 10% chance to summon golden cookie)',20:'Supreme Intellect (boosts all minigames while active)',21:'Dragon Guts (+2 wrinkler slots; wrinklers digest and explode for +20% more)'};
 const VALID_SEASONS = ['valentines','fools','halloween','christmas','easter',''];
-const SOIL_NAMES = {0:'Normal soil',1:'Fertilizer (+1 growth tick per cycle)',2:'Clay (passive plant effects)',3:'Woodchips (mutations enabled)',4:'Pebbles (fairy-ring effects)'};
+const SOIL_NAMES = {0:'Normal soil',1:'Fertilizer (ticks every 3 min; fast growth)',2:'Clay (ticks every 15 min; +25% passive effects)',3:'Pebbles (auto-collects seeds on expiration)',4:'Woodchips (mutations spread ×3)'};
 
 function _res(res, status, data) {
   const body = JSON.stringify(data, null, 2);
@@ -921,6 +921,7 @@ const ROUTES = [
   ['DELETE', /^\/action\/queue$/,                       (q,s)=>{ const n=_queue.length; _queue.length=0; _res(s,200,{ok:true,message:`Queue cleared. ${n} action(s) removed.`}); }],
   ['GET',    /^\/sugarlump\/view$/,                     (q,s)=>{ const sl=_getState().sugar_lumps||{}; _res(s,200,{disponiveis:sl.disponiveis||0,tipo_crescendo:sl.tipo_crescendo||null,tempo_para_maduro_ms:sl.tempo_para_maduro_ms||null}); }],
   ['POST',   /^\/sugarlump\/set\/([^\/]+)$/,            async(q,s,p)=>{ const st=_getState(),lp=(st.sugar_lumps||{}).disponiveis||0; if(lp<1){_res(s,422,{error:'Sem lumps.'});return;} const b=_findBuilding(st,p[0]); if(!b){_res(s,404,{error:`Building '${p[0]}' not found.`});return;} const mx=b.name==='Cursor'?20:10; if(b.level>=mx){_res(s,422,{error:`'${b.name}' is already at max level.`});return;} _queue.push({type:'sugarlump_use',build_name:b.name}); _res(s,200,{ok:true,message:`Lump para '${b.name}' (${b.level}→${b.level+1}).`}); }],
+  ['POST',   /^\/sugarlump\/use\/([^\/]+)$/,            async(q,s,p)=>{ const st=_getState(),lp=(st.sugar_lumps||{}).disponiveis||0; if(lp<1){_res(s,422,{error:'Sem lumps.'});return;} const b=_findBuilding(st,p[0]); if(!b){_res(s,404,{error:`Building '${p[0]}' not found.`});return;} const mx=b.name==='Cursor'?20:10; if(b.level>=mx){_res(s,422,{error:`'${b.name}' is already at max level.`});return;} _queue.push({type:'sugarlump_use',build_name:b.name}); _res(s,200,{ok:true,message:`Lump para '${b.name}' (${b.level}→${b.level+1}).`}); }],
   ['GET',    /^\/golden_cookie\/view$/,                 (q,s)=>{ const sh=_getState().shimmers||[]; _res(s,200,{tem_shimmer:sh.length>0,total:sh.length,shimmers:sh,acao_recomendada:sh.length>0?{type:'click_shimmer',index:0}:null}); }],
   ['GET',    /^\/effects\/view$/,                       (q,s)=>{ const bf=_getState().buffs_ativos||{}; _res(s,200,{tem_buffs:Object.keys(bf).length>0,buffs:bf}); }],
   ['GET',    /^\/prefs\/view$/,                 (q,s)=>{ const pr=_getState().interruptores||{},r={}; for(const k in PREF_MAP)r[k]={ativo:!!pr[k],descricao:PREF_MAP[k].d}; _res(s,200,r); }],
@@ -965,7 +966,7 @@ const ROUTES = [
   ['POST',   /^\/stock\/sell\/([^\/]+)\/(\d+)$/,          async(q,s,p)=>{ const tk=p[0].toUpperCase(),qty=parseInt(p[1],10),st=_getState(),b=st.bolsa; if(!b){_res(s,404,{error:'Stock Market not available.'});return;} if(!TICKERS.includes(tk)){_res(s,400,{error:`Ticker '${tk}' is invalid.`});return;} const g=(b.goods||{})[tk]; if(!g){_res(s,404,{error:`Asset '${tk}' not found.`});return;} if(g.portfolio<qty){_res(s,422,{error:'Insufficient portfolio.',possui:g.portfolio});return;} _queue.push({type:'stock_sell',ticker:tk,quantidade:qty}); _res(s,200,{ok:true,message:`Venda de ${qty}x ${tk} enfileirada.`,unit_price:g.price}); }],
   // ── Dragon ─────────────────────────────────────────────────────────────────
   ['GET',    /^\/dragon\/view$/,                             (q,s)=>{ const d=_getState().dragao; if(!d){_res(s,404,{error:"Dragon not available. Buy 'How to bake your dragon'."});return;} _res(s,200,Object.assign({},d,{aura1_desc:DRAGON_AURAS[d.aura1]||'?',aura2_desc:DRAGON_AURAS[d.aura2]||'?',auras:DRAGON_AURAS})); }],
-  ['POST',   /^\/dragon\/set_aura\/(\d+)\/(\d+)$/,          async(q,s,p)=>{ const id=parseInt(p[0],10),slot=parseInt(p[1],10),d=_getState().dragao; if(!d){_res(s,404,{error:'Dragon not available.'});return;} if(id<0||id>17){_res(s,400,{error:'aura_id: 0-17.'});return;} if(slot===1&&d.nivel<20){_res(s,422,{error:`Secondary aura requires level 20. Current: ${d.nivel}`});return;} _queue.push({type:'dragon_set_aura',aura_id:id,slot}); _res(s,200,{ok:true,message:`Aura '${DRAGON_AURAS[id]}' enfileirada para slot ${slot}.`,aviso:'Setting an aura consumes 1 building of your most expensive type.'}); }],
+  ['POST',   /^\/dragon\/set_aura\/(\d+)\/(\d+)$/,          async(q,s,p)=>{ const id=parseInt(p[0],10),slot=parseInt(p[1],10),d=_getState().dragao; if(!d){_res(s,404,{error:'Dragon not available.'});return;} if(id<0||id>21){_res(s,400,{error:'aura_id: 0-21.'});return;} if(slot===1&&d.nivel<20){_res(s,422,{error:`Secondary aura requires level 20. Current: ${d.nivel}`});return;} _queue.push({type:'dragon_set_aura',aura_id:id,slot}); _res(s,200,{ok:true,message:`Aura '${DRAGON_AURAS[id]}' enfileirada para slot ${slot}.`,aviso:'Setting an aura consumes 1 building of your most expensive type.'}); }],
   // ── Wrinklers ──────────────────────────────────────────────────────────────
   ['GET',    /^\/wrinklers\/view$/,                          (q,s)=>{ const ws=((_getState().wrinklers)||[]).filter(w=>w.phase>0),tot=ws.reduce((a,w)=>a+w.sucked,0); _res(s,200,{total_ativos:ws.length,maximo:12,total_cookies_acumulados:tot,total_ao_estourar:Math.round(tot*1.1),wrinklers:ws,tem_shiny:ws.some(w=>w.type===1)}); }],
   ['POST',   /^\/wrinklers\/pop\/(\d+)$/,                   async(q,s,p)=>{ const id=parseInt(p[0],10),ws=(_getState().wrinklers)||[],w=ws.find(x=>x.id===id&&x.phase>0); if(!w){_res(s,404,{error:`Wrinkler ${id} is not active.`});return;} _queue.push({type:'wrinkler_pop',id}); _res(s,200,{ok:true,message:`Wrinkler ${id} will be popped.`,estimated_cookies_released:Math.round(w.sucked*1.1),shiny:w.type===1}); }],
@@ -978,10 +979,10 @@ const ROUTES = [
   ['POST',   /^\/volume\/set\/([^\/]+)\/(\d+)$/,            async(q,s,p)=>{ const tipo=p[0],val=Math.min(100,Math.max(0,parseInt(p[1],10))); if(!['sfx','music'].includes(tipo)){_res(s,400,{error:"tipo: 'sfx' ou 'music'."});return;} _queue.push({type:'set_volume',tipo,valor:val}); _res(s,200,{ok:true,tipo,valor:val,message:`Volume de ${tipo} ajustado para ${val}%.`}); }],
   ['POST',   /^\/volume\/mute\/([^\/]+)$/,                  async(q,s,p)=>{ const st=_getState(),b=_findBuilding(st,p[0]); if(!b){_res(s,404,{error:`Building '${p[0]}' not found.`});return;} _queue.push({type:'mute_building',nome:b.name}); _res(s,200,{ok:true,edificio:b.name,muted_now:!!b.muted,new_state:!b.muted}); }],
   // ── Dragon — upgrade ──────────────────────────────────────────────────────
-  ['POST',   /^\/dragon\/upgrade$/,                      async(q,s)=>{ const d=(_getState().dragao)||{}; if(d.pode_evoluir===false){_res(s,422,{error:'Dragon cannot evolve.',nivel:d.nivel,aviso:'Max level reached, or not enough cookies/buildings for current upgrade cost.'});return;} _queue.push({type:'upgrade_dragon'}); _res(s,200,{ok:true,message:'Dragon upgrade queued.',nivel_atual:d.nivel,aviso:'Costs cookies and/or sells buildings depending on level. Check GET /dragon/view.'}); }],
+  ['POST',   /^\/dragon\/upgrade$/,                      async(q,s)=>{ const d=(_getState().dragao)||{}; if(!d.pode_evoluir){_res(s,422,{error:'Dragon cannot evolve.',nivel:d.nivel,aviso:'Max level reached, or not enough cookies/buildings for current upgrade cost.'});return;} _queue.push({type:'upgrade_dragon'}); _res(s,200,{ok:true,message:'Dragon upgrade queued.',nivel_atual:d.nivel,aviso:'Costs cookies and/or sells buildings depending on level. Check GET /dragon/view.'}); }],
   // ── Papai Noel ────────────────────────────────────────────────────────────
   ['GET',    /^\/santa\/view$/,                          (q,s)=>{ const sc=_getState().santa; if(!sc){_res(s,404,{error:'Santa state not available.'});return;} _res(s,200,sc); }],
-  ['POST',   /^\/santa\/upgrade$/,                       async(q,s)=>{ const sc=(_getState().santa)||{}; if(!sc.pode_evoluir){_res(s,422,{error:`Santa is already at max level (${sc.nivel_maximo}).`,level:sc.nivel});return;} _queue.push({type:'upgrade_santa'}); _res(s,200,{ok:true,message:`Upgrade queued: '${sc.nome}' → level ${(sc.nivel||0)+1}.`,aviso:"Requires season 'christmas' active and enough cookiesicientes."}); }],
+  ['POST',   /^\/santa\/upgrade$/,                       async(q,s)=>{ const sc=(_getState().santa)||{}; if(!sc.pode_evoluir){_res(s,422,{error:`Santa is already at max level (${sc.nivel_maximo}).`,level:sc.nivel});return;} _queue.push({type:'upgrade_santa'}); _res(s,200,{ok:true,message:`Upgrade queued: '${sc.nome}' → level ${(sc.nivel||0)+1}.`,aviso:"Requires season 'christmas' active and enough cookies to afford."}); }],
   // ── Sugar Lump — colheita manual ──────────────────────────────────────────
   ['POST',   /^\/sugarlump\/harvest$/,                   async(q,s)=>{ _queue.push({type:'harvest_lump'}); _res(s,200,{ok:true,message:'Colheita manual de sugar lump enfileirada.',aviso:'Manual harvest lets you control the next lump type (Bifurcated, Golden, Caramelized, etc.).'}); }],
   // ── Venda total de um tipo ────────────────────────────────────────────────
@@ -1309,6 +1310,30 @@ function _buildDocs(lang) {
     'building': 'building name',
   };
 
+  const _BLDS = ['Cursor','Grandma','Farm','Mine','Factory','Bank','Temple','Wizard tower','Shipment','Alchemy lab','Portal','Time machine','Antimatter condenser','Prism','Chancemaker','Fractal engine','Javascript console','Idleverse','Cortex baker','You'].map(function(b){return{v:b};});
+  const ROUTE_SELECTS = {
+    'n':        [{v:'1'},{v:'10'},{v:'100'}],
+    'x':        [{v:'0'},{v:'1'},{v:'2'},{v:'3'},{v:'4'},{v:'5'}],
+    'y':        [{v:'0'},{v:'1'},{v:'2'},{v:'3'},{v:'4'},{v:'5'}],
+    'ticker':   ['CRL','CHC','BTR','SUG','NUT','SLT','VNL','EGG','CNM','CRM','JAM','WCH','HNY','CKI','RCP','SBD','PBL','YOU'].map(function(t){return{v:t};}),
+    'tipo':     [{v:'sfx',l:'sfx — Sound Effects'},{v:'music',l:'music — BGM'}],
+    'idx':      [{v:'0',l:'0 — Conjure Baked Goods'},{v:'1',l:'1 — Force the Hand of Fate'},{v:'2',l:"2 — Thor's Tempest"},{v:'3',l:'3 — Summer Solstice'},{v:'4',l:'4 — Spontaneous Edifice'},{v:'5',l:"5 — Haggler's Charm"},{v:'6',l:'6 — Stretch Time'},{v:'7',l:'7 — Commodity Revaluation'},{v:'8',l:'8 — Diminish Ineptitude'}],
+    'spirit':   [{v:'0',l:'0 — Holobore'},{v:'1',l:'1 — Vomitrax'},{v:'2',l:'2 — Cyclius'},{v:'3',l:'3 — Dotjeiess'},{v:'4',l:'4 — Muridal'},{v:'5',l:'5 — Jeremy'},{v:'6',l:'6 — Mokalsium'},{v:'7',l:'7 — Idleseer'},{v:'8',l:'8 — Godzamok'},{v:'9',l:'9 — Borealus'},{v:'10',l:'10 — Rigidel'}],
+    'build':    _BLDS,
+    'building': _BLDS,
+    '/pantheon/set/{spirit}/{slot}:slot':  [{v:'0',l:'0 — Diamond (100%)'},{v:'1',l:'1 — Ruby (50%)'},{v:'2',l:'2 — Jade (25%)'}],
+    '/pantheon/remove/{slot}:slot':        [{v:'0',l:'0 — Diamond'},{v:'1',l:'1 — Ruby'},{v:'2',l:'2 — Jade'}],
+    '/dragon/set_aura/{id}/{slot}:slot':   [{v:'0',l:'0 — Primary'},{v:'1',l:'1 — Secondary (level ≥ 20)'}],
+    '/dragon/set_aura/{id}/{slot}:id':     [{v:'0',l:'0 — No aura'},{v:'1',l:'1 — Breath of Milk'},{v:'2',l:'2 — Dragon Cursor'},{v:'3',l:'3 — Elder Battalion'},{v:'4',l:'4 — Reaper of Fields'},{v:'5',l:'5 — Earth Shatterer'},{v:'6',l:'6 — Master of the Armory'},{v:'7',l:'7 — Fierce Hoarder'},{v:'8',l:'8 — Dragon God'},{v:'9',l:'9 — Arcane Aura'},{v:'10',l:'10 — Dragonflight'},{v:'11',l:'11 — Ancestral Metamorphosis'},{v:'12',l:'12 — Unholy Dominion'},{v:'13',l:'13 — Epoch Manipulator'},{v:'14',l:'14 — Mind Over Matter'},{v:'15',l:'15 — Radiant Appetite'},{v:'16',l:"16 — Dragon's Fortune"},{v:'17',l:"17 — Dragon's Curve"},{v:'18',l:'18 — Reality Bending'},{v:'19',l:'19 — Dragon Orbs'},{v:'20',l:'20 — Supreme Intellect'},{v:'21',l:'21 — Dragon Guts'}],
+    '/wrinklers/pop/{id}:id':             [{v:'0'},{v:'1'},{v:'2'},{v:'3'},{v:'4'},{v:'5'},{v:'6'},{v:'7'},{v:'8'},{v:'9'},{v:'10'},{v:'11'}],
+    '/season/set/{name}:name':            [{v:'halloween'},{v:'christmas'},{v:'valentines'},{v:'easter'},{v:'fools'},{v:'',l:'— none (disable season) —'}],
+    '/prefs/set/{name}:name':             ['fancy','filters','milk','cursors','particles','numbers','wobbly','animate','crates','monospace','cookiesound','format','warn','focus','extraButtons','lumpConfirm','screenReader','fastNotes','scary','customGrandmas','autosave','timeout','cloudSave','bgMusic','fullscreen','discordPresence'].map(function(p){return{v:p};}),
+    '/action/buy/build/{name}/{n}:name':  _BLDS,
+    '/action/sell/build/{name}/{n}:name': _BLDS,
+    '/action/view/lvl/{name}:name':       _BLDS,
+    '/action/sell_all/{name}:name':       _BLDS,
+  };
+
   const SECTION_DESCS = {
     'System & State':          '<b>GET /</b> confirms server + game connection. <b>GET /state</b> returns the full ~60-field snapshot merged from fast state (every ~500 ms: cookies, CpS, buffs, shimmers) and slow state (every ~5 s: buildings, minigames, dragon, legacy). Use <b>GET /stats</b> for a cleaner, annotated view of all numeric fields.',
     'Buildings & Upgrades':    'All 20 buildings from <b>Cursor</b> to <b>You</b>. Buy and sell in batches of 1, 10 or 100. <b>GET /action/view/{name}</b> shows current price, affordability and sell value. Upgrades are one-time unlocks bought from the store — once purchased they apply permanently until ascension.',
@@ -1316,9 +1341,9 @@ function _buildDocs(lang) {
     'Golden Cookies & Buffs':  'Shimmers spawn randomly and vanish after ~13 s. Click via <b>POST /action/enqueue {type:"click_shimmer", index:0}</b>. Common effects — <b>Frenzy</b>: ×7 CpS for 77 s &nbsp;·&nbsp; <b>Click Frenzy</b>: ×777 CpC for 13 s &nbsp;·&nbsp; <b>Lucky</b>: instant cookies (capped at 15 min CpS). Active buffs with time remaining are in <b>GET /effects/view</b>.',
     'Grimoire':                'Unlocks when Wizard Tower reaches level 1 (1 sugar lump). Mana regenerates over time up to <code>magicMax</code>. Key spells — <b>idx 0 Conjure Baked Goods</b>: instant cookies &nbsp;·&nbsp; <b>idx 1 Force the Hand of Fate</b>: forces a golden cookie to spawn (most powerful). Fail chance = mana deficit + base <code>failChnc</code> of the spell.',
     'Pantheon':                'Unlocks when Temple reaches level 1. Slot up to 3 spirits: Diamond (100 %), Ruby (50 %), Jade (25 %). Swapping costs 1 worship swap (refills to 3 with 1 sugar lump). Key combo — <b>Godzamok</b> (slot 0) multiplies CpC by number of distinct building types sold; pair with <b>Reaper of Fields</b> in garden for massive click combos.',
-    'Garden':                  'Unlocks when Farm reaches level 1. Grid grows with Farm sugar lump level (3×3 → 6×6). Plant seeds from discovered list; plants mutate when two mature types are adjacent. Soil types control growth speed vs mutation chance. Soil 1 (Fertilizer) maximises growth; soil 3 (Pebbles) maximises mutation discovery.',
+    'Garden':                  'Unlocks when Farm reaches level 1. Grid grows with Farm sugar lump level (3×3 → 6×6). Plant seeds from discovered list; plants mutate when two mature types are adjacent. Soil types control growth speed vs mutation chance. Soil 1 (Fertilizer) maximises growth; soil 4 (Woodchips) maximises mutation rate (mutations spread ×3).',
     'Stock Market':            'Unlocks when Bank reaches level 1. 18 assets each track a resting value; price oscillates around it. <b>GET /stock/analysis</b> ranks buy opportunities by discount (%). Buy when price is well below rest, sell above it. Each building sold reduces the resting value of its linked ticker — careful with Godzamok combos.',
-    'Dragon':                  'Sacrifice cookies and/or buildings to level Krumblor from level 0 to 20. Higher levels unlock new aura slots and choices. <b>Aura 11 Radiant Appetite</b> doubles base CpS. <b>Aura 6 Dragonflight</b> makes golden cookies grant ×1111 CpC for 10 s. Level 20 unlocks both aura slots simultaneously.',
+    'Dragon':                  'Sacrifice cookies and/or buildings to level Krumblor from level 0 to 20. Higher levels unlock new aura slots and choices. <b>Aura 15 Radiant Appetite</b> doubles base CpS (×2 all cookie production). <b>Aura 10 Dragonflight</b> makes golden cookies grant ×1111 CpC for 10 s. Level 20 unlocks both aura slots simultaneously.',
     'Santa':                   'Activate Christmas season first (<b>POST /season/set/christmas</b>). Then evolve Santa through 14 levels (<b>POST /santa/upgrade</b>). Higher levels unlock powerful upgrades in the store. Last level unlocks the <b>Santa\'s legacy</b> upgrade.',
     'Wrinklers':               'Up to 12 wrinklers can attach to the cookie. They reduce raw CpS by ~5 % each but accumulate cookies internally and return ×1.1 on pop. Strategy: pop during <b>Frenzy × Elder Frenzy</b> for maximum return. Shiny wrinklers (very rare, ~0.01 %) return ×3.3. Let them fill during long idle sessions.',
     'Seasons':                 'Seasonal events last until manually switched. Each unlocks exclusive upgrades (e.g. Christmas: Santa/reindeer; Halloween: "creepy cookies"; Easter: egg drops; Valentines: heart biscuits). Season Switcher upgrade allows changing mid-run; uses tracked by <code>seasonUses</code>.',
@@ -1347,11 +1372,19 @@ function _buildDocs(lang) {
       urlParts.forEach(function(part, i) {
         urlHtml += '<span style="color:#5bc8f5">' + part + '</span>';
         if (i < params.length) {
-          var hint = PARAM_HINTS[params[i]] || '';
-          urlHtml += '<input data-param="' + params[i] + '" data-param-for="' + tid + '"' +
-            ' placeholder="' + params[i] + '"' +
-            ' style="background:#0d1a2a;border:1px solid #2a4a6a;border-radius:3px;padding:2px 6px;color:#f5e642;font-family:monospace;font-size:12px;width:' + Math.max(60, params[i].length * 8 + 20) + 'px" />' +
-            (hint ? '<span style="color:#444;font-size:10px;margin:0 4px" title="' + hint + '">(' + hint.slice(0, 30) + (hint.length > 30 ? '…' : '') + ')</span>' : '');
+          var opts = ROUTE_SELECTS[r.p + ':' + params[i]] || ROUTE_SELECTS[params[i]];
+          if (opts) {
+            urlHtml += '<select data-param="' + params[i] + '" data-param-for="' + tid + '"' +
+              ' style="background:#0d1a2a;border:1px solid #2a4a6a;border-radius:3px;padding:2px 6px;color:#f5e642;font-family:monospace;font-size:12px;cursor:pointer;max-width:220px">' +
+              opts.map(function(o){return '<option value="'+o.v+'">'+(o.l||o.v)+'</option>';}).join('') +
+              '</select>';
+          } else {
+            var hint = PARAM_HINTS[params[i]] || '';
+            urlHtml += '<input data-param="' + params[i] + '" data-param-for="' + tid + '"' +
+              ' placeholder="' + params[i] + '"' +
+              ' style="background:#0d1a2a;border:1px solid #2a4a6a;border-radius:3px;padding:2px 6px;color:#f5e642;font-family:monospace;font-size:12px;width:' + Math.max(60, params[i].length * 8 + 20) + 'px" />' +
+              (hint ? '<span style="color:#444;font-size:10px;margin:0 4px" title="' + hint + '">(' + hint.slice(0, 30) + (hint.length > 30 ? '…' : '') + ')</span>' : '');
+          }
         }
       });
       urlHtml += '</code>';
