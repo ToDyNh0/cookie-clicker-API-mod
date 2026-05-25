@@ -250,7 +250,9 @@ function buildSlowState(){
         var cell=gm.plot&&gm.plot[y]?gm.plot[y][x]:null;
         if(!cell||cell[0]===0){grid[x][y]=null;continue;}
         var pl=gm.plantsById?gm.plantsById[cell[0]-1]:null;
-        grid[x][y]={seedId:cell[0]-1,seedName:pl?pl.name:"?",growthStage:cell[1],mature:pl?cell[1]>=(pl.mature||100):false,icon:pl?pl.icon||[0,0]:[0,0]};
+        var rg=cell[1],mT=pl?pl.mature||100:100;
+        var stg=rg>=mT?4:rg>=mT*0.666?3:rg>=mT*0.333?2:1;
+        grid[x][y]={seedId:cell[0]-1,seedName:pl?pl.name:"?",growthStage:rg,mature:rg>=mT,growthPct:rg>=mT?100:Math.round(rg/mT*100),icon:[stg,pl?pl.icon:0]};
       }
     }
     var seeds=Object.values(gm.plants||{}).map(function(pl2,i){

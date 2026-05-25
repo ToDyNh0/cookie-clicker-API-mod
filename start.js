@@ -1584,7 +1584,7 @@ function _buildDocs(lang) {
     '      var cells=row.map(function(cell){',
     '        if(!cell)return \'<td style="width:40px;height:40px;background:#060c14;border:1px solid #0d1a2e"></td>\';',
     '        var ic=cell.icon||[0,0];',
-    '        var pct=Math.round((cell.growthStage||0)*100);',
+    '        var pct=cell.growthPct||0;',
     '        var m=cell.mature;',
     '        var spr=\'<div style="width:40px;height:40px;background-image:url(/img/gardenPlants.png);background-position:\'+(0-(ic[0]*40))+\'px \'+(0-(ic[1]*40))+\'px;background-size:200px 1440px;image-rendering:pixelated"></div>\';',
     '        return \'<td title="\'+cell.seedName+\' \'+pct+\'%" style="width:40px;height:40px;background:\'+(m?\'#0a2010\':\'#081208\')+\';border:1px solid \'+(m?\'#1a4020\':\'#0d1a12\')+\';padding:0">\'+spr+\'</td>\';',
