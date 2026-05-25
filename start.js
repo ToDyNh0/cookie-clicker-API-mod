@@ -1303,11 +1303,13 @@ function _buildDocs(lang) {
     'seed':     'seed ID from GET /garden/view',
     'ticker':   'CRL CHC BTR SUG NUT SLT VNL EGG CNM CRM JAM WCH HNY CKI RCP SBD PBL YOU',
     'id':       'numeric ID from /state or /legacy/upgrades',
-    'name':     'English building name (e.g. Farm)',
-    'build':    'English building name',
+    'name':     'building or upgrade name (e.g. Farm)',
+    'build':    'building name (e.g. Farm)',
     'tipo':     'sfx or music',
     'valor':    '0–100',
     'building': 'building name',
+    '/action/view/upgrade/{name}:name':   'upgrade name — see GET /state → upgrades_na_loja',
+    '/action/buy/upgrade/{name}:name':    'upgrade name — see GET /state → upgrades_na_loja',
   };
 
   const _BLDS = ['Cursor','Grandma','Farm','Mine','Factory','Bank','Temple','Wizard tower','Shipment','Alchemy lab','Portal','Time machine','Antimatter condenser','Prism','Chancemaker','Fractal engine','Javascript console','Idleverse','Cortex baker','You'].map(function(b){return{v:b};});
@@ -1329,6 +1331,7 @@ function _buildDocs(lang) {
     '/wrinklers/pop/{id}:id':             [{v:'0'},{v:'1'},{v:'2'},{v:'3'},{v:'4'},{v:'5'},{v:'6'},{v:'7'},{v:'8'},{v:'9'},{v:'10'},{v:'11'}],
     '/season/set/{name}:name':            [{v:'halloween'},{v:'christmas'},{v:'valentines'},{v:'easter'},{v:'fools'},{v:'',l:'— none (disable season) —'}],
     '/prefs/set/{name}:name':             ['fancy','filters','milk','cursors','particles','numbers','wobbly','animate','crates','monospace','cookiesound','format','warn','focus','extraButtons','lumpConfirm','screenReader','fastNotes','scary','customGrandmas','autosave','timeout','cloudSave','bgMusic','fullscreen','discordPresence'].map(function(p){return{v:p};}),
+    '/action/view/{name}:name':            _BLDS,
     '/action/buy/build/{name}/{n}:name':  _BLDS,
     '/action/sell/build/{name}/{n}:name': _BLDS,
     '/action/view/lvl/{name}:name':       _BLDS,
@@ -1380,7 +1383,7 @@ function _buildDocs(lang) {
               opts.map(function(o){return '<option value="'+o.v+'">'+(o.l||o.v)+'</option>';}).join('') +
               '</select>';
           } else {
-            var hint = PARAM_HINTS[params[i]] || '';
+            var hint = PARAM_HINTS[r.p + ':' + params[i]] || PARAM_HINTS[params[i]] || '';
             urlHtml += '<input data-param="' + params[i] + '" data-param-for="' + tid + '"' +
               ' placeholder="' + params[i] + '"' +
               ' style="background:#0d1a2a;border:1px solid #2a4a6a;border-radius:3px;padding:2px 6px;color:#f5e642;font-family:monospace;font-size:12px;width:' + Math.max(60, params[i].length * 8 + 20) + 'px" />' +
