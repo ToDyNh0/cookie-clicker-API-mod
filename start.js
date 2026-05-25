@@ -1168,9 +1168,8 @@ function _buildDocs(lang) {
     {m:'GET',    p:'/docs/pt',                             d:'Documentação em Português — mesma referência completa em PT-BR'},
     {m:'GET',    p:'/state',                               d:'Full game snapshot (updated every ~500ms by the mod)'},
     {m:'GET',    p:'/action/view/{name}',                  d:'Building or upgrade details by name (case-insensitive)'},
-    {m:'GET',    p:'/action/view/upgrade/{name}',          d:'Upgrade-only lookup: price, pool, description, affordability'},
     {m:'GET',    p:'/action/view/lvl/{name}',              d:'Building level info (sugar lump upgrades)'},
-    {m:'POST',   p:'/action/buy/upgrade/{name}',          d:'Purchase an upgrade from the store by name'},
+    {m:'POST',   p:'/action/buy/upgrade/{name}',          d:'Purchase an upgrade currently in the store (list loaded live from /state)'},
     {m:'POST',   p:'/action/buy/build/{name}/{n}',         d:'Buy N buildings (n = 1, 10 or 100)'},
     {m:'POST',   p:'/action/sell/build/{name}/{n}',        d:'Sell N buildings'},
     {m:'POST',   p:'/action/enqueue',                      d:'Add JSON action to FIFO queue — mod executes it within ~500 ms. All POST endpoints above call this internally. See body textarea for all 30 action types.'},
@@ -1332,6 +1331,7 @@ function _buildDocs(lang) {
     '/season/set/{name}:name':            [{v:'halloween'},{v:'christmas'},{v:'valentines'},{v:'easter'},{v:'fools'},{v:'',l:'— none (disable season) —'}],
     '/prefs/set/{name}:name':             ['fancy','filters','milk','cursors','particles','numbers','wobbly','animate','crates','monospace','cookiesound','format','warn','focus','extraButtons','lumpConfirm','screenReader','fastNotes','scary','customGrandmas','autosave','timeout','cloudSave','bgMusic','fullscreen','discordPresence'].map(function(p){return{v:p};}),
     '/action/view/{name}:name':            _BLDS,
+    '/action/buy/upgrade/{name}:name':    '__LIVE_UPGRADES__',
     '/action/buy/build/{name}/{n}:name':  _BLDS,
     '/action/sell/build/{name}/{n}:name': _BLDS,
     '/action/view/lvl/{name}:name':       _BLDS,
@@ -1377,7 +1377,12 @@ function _buildDocs(lang) {
         urlHtml += '<span style="color:#5bc8f5">' + part + '</span>';
         if (i < params.length) {
           var opts = ROUTE_SELECTS[r.p + ':' + params[i]] || ROUTE_SELECTS[params[i]];
-          if (opts) {
+          if (opts === '__LIVE_UPGRADES__') {
+            urlHtml += '<select data-param="' + params[i] + '" data-param-for="' + tid + '" data-live="upgrades"' +
+              ' style="background:#0d1a2a;border:1px solid #2a4a6a;border-radius:3px;padding:2px 6px;color:#888;font-family:monospace;font-size:12px;cursor:pointer;max-width:260px">' +
+              '<option value="">⟳ loading store upgrades…</option>' +
+              '</select>';
+          } else if (opts) {
             urlHtml += '<select data-param="' + params[i] + '" data-param-for="' + tid + '"' +
               ' style="background:#0d1a2a;border:1px solid #2a4a6a;border-radius:3px;padding:2px 6px;color:#f5e642;font-family:monospace;font-size:12px;cursor:pointer;max-width:220px">' +
               opts.map(function(o){return '<option value="'+o.v+'">'+(o.l||o.v)+'</option>';}).join('') +
@@ -1837,6 +1842,24 @@ function _buildDocs(lang) {
     '    });',
     '  }',
   ];
+  scriptLines.push(
+    '(function(){',
+    '  fetch("/state").then(function(r){return r.json();}).then(function(st){',
+    '    var ups=(st.upgrades_na_loja||[]);',
+    '    var html=ups.length',
+    '      ?ups.map(function(u){return\'<option value="\'+u.name+\'">\'+u.name+\'</option>\';}).join("")',
+    '      :\'<option value="">No upgrades in store right now</option>\';',
+    '    document.querySelectorAll(\'select[data-live="upgrades"]\').forEach(function(sel){',
+    '      sel.innerHTML=html;',
+    '      sel.style.color="#f5e642";',
+    '    });',
+    '  }).catch(function(){',
+    '    document.querySelectorAll(\'select[data-live="upgrades"]\').forEach(function(sel){',
+    '      sel.innerHTML=\'<option value="">⚠ game offline — type name manually</option>\';',
+    '    });',
+    '  });',
+    '})();'
+  );
   var scriptContent = scriptLines.join('\n');
 
   return `<!DOCTYPE html>
