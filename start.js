@@ -400,6 +400,187 @@ buildML();load();setInterval(load,30000);
 </body>
 </html>`;
 
+// ── Saves / Backup Codes HTML ────────────────────────────────────────────────
+const _SAVES_HTML = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cookie Bridge — Backup Codes</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#040410;--bg2:#07071a;--bg3:#0a0a20;--bg4:#0d0d26;--border:#181838;--border2:#222248;--c1:#00e5ff;--c2:#69ff47;--c3:#ffea00;--c4:#d500f9;--c5:#ff4081;--c6:#ff6d00;--dim:#28385a;--dim2:#3a5070;--text:#b0bcd0;--text2:#d0daea}
+html,body{min-height:100%;background:var(--bg);color:var(--text);font-family:'Inter',system-ui,sans-serif}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:40px 40px;opacity:.3;z-index:0}
+header{position:sticky;top:0;z-index:100;background:rgba(7,7,26,.96);backdrop-filter:blur(8px);border-bottom:1px solid var(--border2);padding:0 24px;height:52px;display:flex;align-items:center;gap:12px}
+header::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--c1) 20%,var(--c5) 50%,var(--c3) 80%,transparent);opacity:.6}
+.logo{color:var(--c3);font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:3px;font-weight:500;text-decoration:none;white-space:nowrap}
+.vsep{width:1px;height:24px;background:var(--border2);flex-shrink:0}
+.pill{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-family:'JetBrains Mono',monospace;font-size:10px;border:1px solid;white-space:nowrap}
+.pill-b{border-color:var(--c1);color:var(--c1);background:rgba(0,229,255,.07)}
+.pill-y{border-color:var(--c3);color:var(--c3);background:rgba(255,234,0,.07)}
+.pill-g{border-color:var(--c2);color:var(--c2);background:rgba(105,255,71,.07)}
+.spacer{flex:1}
+.hbtn{background:var(--bg3);border:1px solid var(--border2);color:var(--dim2);padding:4px 12px;border-radius:4px;font-size:10px;cursor:pointer;text-decoration:none;letter-spacing:.5px;transition:all .15s;font-family:inherit}
+.hbtn:hover{border-color:var(--c1);color:var(--c1)}
+.page{position:relative;z-index:1;padding:20px 24px 48px}
+/* how-to box */
+.howto{background:rgba(0,229,255,.04);border:1px solid rgba(0,229,255,.15);border-radius:10px;padding:14px 18px;margin-bottom:22px;display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start}
+.howto-step{display:flex;align-items:flex-start;gap:10px;flex:1;min-width:200px}
+.step-num{width:22px;height:22px;border-radius:50%;background:var(--c1);color:#000;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.step-text{color:var(--text2);font-size:11px;line-height:1.6}
+.step-text b{color:var(--c1)}
+/* controls */
+.ctrl-row{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.ctrl-label{color:var(--dim2);font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:2px}
+.nsel{background:var(--bg4);border:1px solid var(--border2);color:var(--text2);padding:5px 10px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:10px;cursor:pointer;outline:none}
+.save-btn{background:rgba(105,255,71,.06);border:1px solid var(--c2);color:var(--c2);padding:5px 14px;border-radius:4px;font-size:10px;font-family:'JetBrains Mono',monospace;cursor:pointer;transition:all .15s;letter-spacing:.5px}
+.save-btn:hover{background:rgba(105,255,71,.12)}
+/* entries */
+.entry{background:rgba(7,7,26,.97);border:1px solid var(--border2);border-radius:10px;padding:16px;margin-bottom:10px;transition:border-color .2s;position:relative;overflow:hidden}
+.entry:hover{border-color:#2a2a5a}
+.entry::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--c3)00,var(--c3),var(--c3)00);opacity:.5;border-radius:10px 10px 0 0}
+.entry-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.ts{color:var(--c1);font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500}
+.run-badge{background:rgba(213,0,249,.1);border:1px solid rgba(213,0,249,.3);color:#d500f9;font-family:'JetBrains Mono',monospace;font-size:9px;padding:2px 8px;border-radius:10px}
+.stats-row{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px}
+.stat{display:flex;flex-direction:column;gap:2px}
+.stat-l{color:var(--dim2);font-size:8px;text-transform:uppercase;letter-spacing:1.5px;font-family:'JetBrains Mono',monospace}
+.stat-v{color:var(--text2);font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:500}
+.code-box{background:#020208;border:1px solid var(--border2);border-radius:6px;padding:8px 12px;display:flex;align-items:center;gap:10px}
+.code-text{color:var(--dim2);font-family:'JetBrains Mono',monospace;font-size:9px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.copy-btn{background:rgba(0,229,255,.07);border:1px solid var(--c1);color:var(--c1);padding:4px 14px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:9px;cursor:pointer;white-space:nowrap;transition:all .15s;letter-spacing:.5px;flex-shrink:0}
+.copy-btn:hover{background:rgba(0,229,255,.15)}
+.copy-btn.ok{border-color:var(--c2);color:var(--c2);background:rgba(105,255,71,.1)}
+.no-save{color:var(--dim);font-size:10px;font-family:'JetBrains Mono',monospace;font-style:italic;padding:4px}
+#empty{text-align:center;padding:60px 20px;color:var(--dim2);font-family:'JetBrains Mono',monospace}
+@keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(105,255,71,.4)}50%{opacity:.7;box-shadow:0 0 0 4px rgba(105,255,71,0)}}
+.pulse{width:6px;height:6px;border-radius:50%;background:var(--c2);animation:pulse 2s infinite;display:inline-block;flex-shrink:0}
+::-webkit-scrollbar{width:4px;height:4px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+</style>
+</head>
+<body>
+<header>
+  <a class="logo" href="/docs">💾 BACKUP CODES</a>
+  <div class="vsep"></div>
+  <span class="pill pill-b"><span class="pulse"></span>&nbsp;<span id="h-count">—</span></span>
+  <span class="pill pill-y" id="h-size">—</span>
+  <span class="pill pill-g" id="h-latest">—</span>
+  <div class="spacer"></div>
+  <a class="hbtn" href="/charts">← Charts</a>
+  <a class="hbtn" href="/docs">Docs</a>
+  <button class="hbtn" onclick="load()">↻</button>
+</header>
+<div class="page">
+
+  <!-- How to restore -->
+  <div class="howto">
+    <div class="howto-step">
+      <div class="step-num">1</div>
+      <div class="step-text">Find the save from the time you want to restore and click <b>COPY CODE</b></div>
+    </div>
+    <div class="howto-step">
+      <div class="step-num">2</div>
+      <div class="step-text">In Cookie Clicker: <b>Options → Export Save</b> area → click <b>Import Save</b></div>
+    </div>
+    <div class="howto-step">
+      <div class="step-num">3</div>
+      <div class="step-text">Paste the code into the text box and click <b>Load</b>. The game reloads from that point.</div>
+    </div>
+    <div class="howto-step">
+      <div class="step-num">ℹ</div>
+      <div class="step-text">Saves are captured every <b>5 minutes</b> automatically. Use <b>Save Now</b> to capture the current state immediately.</div>
+    </div>
+  </div>
+
+  <!-- Controls -->
+  <div class="ctrl-row">
+    <span class="ctrl-label">SHOW</span>
+    <select class="nsel" id="n-sel" onchange="load()">
+      <option value="10">Last 10</option>
+      <option value="20" selected>Last 20</option>
+      <option value="50">Last 50</option>
+      <option value="100">Last 100</option>
+      <option value="200">Last 200</option>
+    </select>
+    <button class="save-btn" onclick="saveNow()">⚡ Save Now</button>
+    <span id="save-status" style="color:var(--dim2);font-size:10px;font-family:'JetBrains Mono',monospace"></span>
+  </div>
+
+  <!-- List -->
+  <div id="list"><div id="empty">Loading backup codes…</div></div>
+</div>
+<script>
+var _NS=['million','billion','trillion','quadrillion','quintillion','sextillion','septillion','octillion','nonillion','decillion','undecillion','duodecillion','tredecillion','quattuordecillion','quindecillion','sexdecillion','septendecillion','octodecillion','novemdecillion','vigintillion'];
+function fN(n){if(n===null||n===undefined)return'?';n=+n;if(isNaN(n))return'?';var neg=n<0;if(neg)n=-n;var s;if(n>=1e6){var e=Math.min(Math.floor(Math.log10(n)/3)*3,63);var i=e/3-2;s=(i>=0&&i<_NS.length)?(n/Math.pow(10,e)).toFixed(3)+' '+_NS[i]:n.toExponential(3);}else if(n>=1000){s=Math.round(n).toLocaleString('en-US');}else{s=n.toFixed(1);}return neg?'-'+s:s;}
+function fmtTs(iso){var d=new Date(iso);return d.toLocaleDateString()+' '+d.toLocaleTimeString();}
+function fmtTsShort(iso){var d=new Date(iso);return d.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit',second:'2-digit'});}
+
+function copyCode(btn,code){
+  navigator.clipboard.writeText(code).then(function(){
+    btn.textContent='✓ COPIED';btn.className='copy-btn ok';
+    setTimeout(function(){btn.textContent='COPY CODE';btn.className='copy-btn';},2000);
+  }).catch(function(){
+    var t=document.createElement('textarea');t.value=code;document.body.appendChild(t);t.select();document.execCommand('copy');document.body.removeChild(t);
+    btn.textContent='✓ COPIED';btn.className='copy-btn ok';
+    setTimeout(function(){btn.textContent='COPY CODE';btn.className='copy-btn';},2000);
+  });
+}
+
+function renderEntry(e,idx){
+  var hasSave=e.save&&e.save.length>10;
+  var codeHtml=hasSave
+    ? \`<div class="code-box">
+        <span class="code-text" title="\${e.save}">\${e.save.slice(0,80)}…</span>
+        <button class="copy-btn" onclick="copyCode(this,\${JSON.stringify(e.save)})">COPY CODE</button>
+       </div>\`
+    : '<div class="no-save">No save string in this entry (captured before save feature was added)</div>';
+  return \`<div class="entry">
+    <div class="entry-head">
+      <span class="ts">\${fmtTs(e.ts)}</span>
+      <span class="run-badge">Run #\${e.run??'?'}</span>
+      \${idx===0?'<span style="background:rgba(105,255,71,.08);border:1px solid rgba(105,255,71,.3);color:#69ff47;font-family:JetBrains Mono,monospace;font-size:9px;padding:2px 8px;border-radius:10px">LATEST</span>':''}
+    </div>
+    <div class="stats-row">
+      <div class="stat"><span class="stat-l">Prestige</span><span class="stat-v">\${fN(e.prestige)}</span></div>
+      <div class="stat"><span class="stat-l">CpS</span><span class="stat-v">\${fN(e.cps)}</span></div>
+      <div class="stat"><span class="stat-l">Bank</span><span class="stat-v">\${fN(e.cookies)}</span></div>
+      <div class="stat"><span class="stat-l">Buildings</span><span class="stat-v">\${(e.total_buildings||0).toLocaleString('en-US')}</span></div>
+      <div class="stat"><span class="stat-l">Upgrades</span><span class="stat-v">\${(e.upgrades_bought||0).toLocaleString('en-US')}</span></div>
+      <div class="stat"><span class="stat-l">Legacy Gain</span><span class="stat-v">+\${(e.legacy_gain||0).toLocaleString('en-US')}</span></div>
+    </div>
+    \${codeHtml}
+  </div>\`;
+}
+
+async function saveNow(){
+  var st=document.getElementById('save-status');
+  st.textContent='saving…';st.style.color='var(--dim2)';
+  try{
+    var r=await fetch('/db/save/now',{method:'POST'});
+    var d=await r.json();
+    if(d.ok){st.textContent='✓ saved';st.style.color='var(--c2)';setTimeout(function(){st.textContent='';load();},1200);}
+    else{st.textContent='error';st.style.color='var(--c5)';}
+  }catch(e){st.textContent='error: '+e.message;st.style.color='var(--c5)';}
+}
+
+async function load(){
+  var n=document.getElementById('n-sel').value;
+  try{
+    var[info,saves]=await Promise.all([fetch('/db/info').then(r=>r.json()),fetch('/db/saves?n='+n).then(r=>r.json())]);
+    document.getElementById('h-count').textContent=info.count+' saves';
+    document.getElementById('h-size').textContent=info.size_mb+'MB';
+    document.getElementById('h-latest').textContent=info.last_ts?'latest '+fmtTsShort(info.last_ts):'no saves';
+    var list=document.getElementById('list');
+    if(!saves.length){list.innerHTML='<div id="empty" style="text-align:center;padding:60px;color:var(--dim2);font-family:JetBrains Mono,monospace">No saves yet.<br><br>The game auto-saves every 5 min. Click ⚡ Save Now to capture immediately.</div>';return;}
+    list.innerHTML=saves.map(renderEntry).join('');
+  }catch(e){document.getElementById('list').innerHTML='<div id="empty" style="color:#ff4081;padding:40px;text-align:center;font-family:JetBrains Mono,monospace">Error: '+e.message+'</div>';}
+}
+load();
+</script>
+</body>
+</html>`;
+
 // ── Charts HTML ──────────────────────────────────────────────────────────────
 const _CHARTS_HTML = `<!DOCTYPE html>
 <html lang="en">
@@ -468,9 +649,37 @@ canvas{display:block;width:100%!important}
   <span class="pill pill-g" id="h-mem">—</span>
   <span class="pill pill-p" id="h-up">—</span>
   <div class="spacer"></div>
+  <a class="hbtn" href="/saves">💾 Backup Codes</a>
   <a class="hbtn" href="/docs">← Docs</a>
+  <button class="hbtn" style="border-color:#ff4444;color:#ff4444" onclick="showReset()">🗑 DB Reset</button>
   <button class="hbtn" onclick="load()">↻</button>
 </header>
+
+<!-- DB Reset modal -->
+<div id="reset-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:none;align-items:center;justify-content:center">
+  <div style="background:#07071a;border:1px solid #ff4444;border-radius:12px;padding:28px 32px;max-width:400px;width:90%;position:relative">
+    <div style="color:#ff4444;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:3px;margin-bottom:12px">⚠ DB RESET</div>
+    <div style="color:#b0bcd0;font-size:13px;margin-bottom:6px">This will permanently delete <code style="color:#ff4081">saves.ndjson</code> and all save history.</div>
+    <div style="color:#6878a0;font-size:11px;margin-bottom:16px">Type <b style="color:#ff4444">db reset</b> to confirm:</div>
+    <input id="reset-input" type="text" placeholder="db reset" autocomplete="off"
+      style="width:100%;background:#0a0a20;border:1px solid #222248;color:#d0daea;padding:8px 12px;border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:13px;outline:none;margin-bottom:14px"
+      oninput="document.getElementById('reset-confirm').disabled=this.value!=='db reset'">
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button onclick="hideReset()" style="background:#0a0a20;border:1px solid #222248;color:#6878a0;padding:7px 18px;border-radius:6px;cursor:pointer;font-size:11px">Cancel</button>
+      <button id="reset-confirm" disabled onclick="doReset()"
+        style="background:#1a0000;border:1px solid #ff4444;color:#ff4444;padding:7px 18px;border-radius:6px;cursor:pointer;font-size:11px;opacity:.4;transition:opacity .15s"
+        onmouseenter="if(!this.disabled)this.style.background='#2a0000'" onmouseleave="this.style.background='#1a0000'">DELETE ALL</button>
+    </div>
+  </div>
+</div>
+<script>
+document.getElementById('reset-confirm').addEventListener('input',function(){});
+function showReset(){var o=document.getElementById('reset-overlay');o.style.display='flex';document.getElementById('reset-input').value='';document.getElementById('reset-confirm').disabled=true;document.getElementById('reset-confirm').style.opacity='.4';}
+function hideReset(){document.getElementById('reset-overlay').style.display='none';}
+function doReset(){fetch('/db/reset',{method:'DELETE'}).then(r=>r.json()).then(d=>{hideReset();if(d.ok){D=[];drawAll();alert('Database wiped. Auto-save will create a new file on next tick.');}else{alert('Error: '+d.error);}}).catch(e=>alert(e.message));}
+document.getElementById('reset-input').addEventListener('input',function(){var ok=this.value==='db reset';var btn=document.getElementById('reset-confirm');btn.disabled=!ok;btn.style.opacity=ok?'1':'.4';});
+</script>
+
 <div class="page">
   <div class="info-bar" id="info-bar"></div>
 
@@ -1021,10 +1230,13 @@ const ROUTES = [
   ['GET',    /^\/db\/history$/,        (q,s,p,u)=>{ try{ const n=Math.min(parseInt(u.searchParams.get('n')||'500',10),10000); if(!fs.existsSync(_DB_FILE))return _res(s,200,[]); const lines=fs.readFileSync(_DB_FILE,'utf8').split('\n').filter(Boolean); const slice=lines.slice(-n).map(l=>{const e=JSON.parse(l);delete e.save;return e;}); _res(s,200,slice); }catch(e){_res(s,500,{error:e.message});} }],
   ['GET',    /^\/db\/save\/latest$/,   (q,s)=>{ try{ if(!fs.existsSync(_DB_FILE))return _res(s,404,{error:'No saves yet.'}); const lines=fs.readFileSync(_DB_FILE,'utf8').split('\n').filter(Boolean); if(!lines.length)return _res(s,404,{error:'No saves yet.'}); const e=JSON.parse(lines[lines.length-1]); _res(s,200,{ts:e.ts,bakery:e.bakery,run:e.run,prestige:e.prestige,save:e.save}); }catch(e){_res(s,500,{error:e.message});} }],
   ['POST',   /^\/db\/save\/now$/,      async(q,s)=>{ _runDbSave(); _res(s,200,{ok:true,message:'Save snapshot triggered.',file:_DB_FILE}); }],
+  ['GET',    /^\/db\/saves$/,         (q,s,p,u)=>{ try{ const n=Math.min(parseInt(u.searchParams.get('n')||'20',10),200); if(!fs.existsSync(_DB_FILE))return _res(s,200,[]); const lines=fs.readFileSync(_DB_FILE,'utf8').split('\n').filter(Boolean); _res(s,200,lines.slice(-n).map(l=>JSON.parse(l)).reverse()); }catch(e){_res(s,500,{error:e.message});} }],
+  ['DELETE', /^\/db\/reset$/,         (q,s)=>{ try{ if(fs.existsSync(_DB_FILE)){fs.unlinkSync(_DB_FILE);} _DB_COUNT=0; _res(s,200,{ok:true,message:'Database wiped.',file:_DB_FILE}); }catch(e){_res(s,500,{error:e.message});} }],
   // ── IO ────────────────────────────────────────────────────────────────────
   ['GET',    /^\/io$/,                 (q,s)=>{ const m=process.memoryUsage(); _res(s,200,{uptime_s:Math.round(process.uptime()),memory:{rss_mb:Math.round(m.rss/1024/1024*10)/10,heap_used_mb:Math.round(m.heapUsed/1024/1024*10)/10,heap_total_mb:Math.round(m.heapTotal/1024/1024*10)/10},os:{free_mem_mb:Math.round(_os.freemem()/1024/1024),total_mem_mb:Math.round(_os.totalmem()/1024/1024),load_avg:_os.loadavg(),platform:_os.platform(),cpus:_os.cpus().length,uptime_s:Math.round(_os.uptime())}}); }],
   // ── Charts ────────────────────────────────────────────────────────────────
   ['GET',    /^\/charts$/,             (q,s)=>{ s.writeHead(200,{'Content-Type':'text/html;charset=utf-8'}); s.end(_CHARTS_HTML); }],
+  ['GET',    /^\/saves$/,             (q,s)=>{ s.writeHead(200,{'Content-Type':'text/html;charset=utf-8'}); s.end(_SAVES_HTML); }],
   ['GET',    /^\/dbview$/,            (q,s)=>{ s.writeHead(301,{'Location':'/charts'}); s.end(); }],
   // ── Grimoire ──────────────────────────────────────────────────────────────
   ['GET',    /^\/grimoire\/view$/,                           (q,s)=>{ const g=_getState().grimorio; if(!g){_res(s,404,{error:'Grimoire not available. Buy the Wizard Tower.'});return;} _res(s,200,g); }],
@@ -1206,8 +1418,11 @@ function _buildDocs() {
     {m:'GET',    p:'/db/history?n=500',                    d:'Historical stats from DB (no save string) — cps, prestige, cookies, buildings, chips over time. Up to 10 000 entries'},
     {m:'GET',    p:'/db/save/latest',                      d:'Most recent full game save string (base64, same as Export Save in-game) — use to restore or analyze'},
     {m:'POST',   p:'/db/save/now',                         d:'Trigger an immediate DB snapshot (no wait for 5-min interval)'},
+    {m:'GET',    p:'/db/saves?n=20',                       d:'Last N save entries WITH full base64 save strings, newest first (max 200). Use the save string with Import Save in-game to restore any point in time'},
+    {m:'DELETE', p:'/db/reset',                            d:'DANGER: Permanently delete the entire saves.ndjson database. Requires confirmation via the /charts DB Reset modal. Irreversible.'},
     {m:'GET',    p:'/io',                                  d:'Real-time Node.js process stats — heap used/total, RSS, plus OS free/total RAM, CPU count, uptime'},
-    {m:'GET',    p:'/charts',                              d:'Evolution chart page (Chart.js) — CpS, prestige, cookies, buildings, upgrades, chips over time. Auto-refreshes every 30 s'},
+    {m:'GET',    p:'/charts',                              d:'Evolution chart page (Chart.js) — CpS, prestige, cookies, buildings, upgrades, legacy gain over time. Auto-refreshes every 30 s'},
+    {m:'GET',    p:'/saves',                               d:'Backup Codes page — full save strings per 5-min snapshot. Copy any code and paste it into Cookie Clicker Import Save to restore that moment'},
   ];
 
   const badge = (m) => {
@@ -1234,7 +1449,7 @@ function _buildDocs() {
     {title:'Legacy & Prestige',  icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94.63 1.5 1.98 2.63 3.61 2.96V17H7v2h10v-2h-4v-1.1c1.63-.33 2.98-1.46 3.61-2.96C19.08 12.63 21 10.55 21 8V7c0-1.1-.9-2-2-2zM5 8V7h2v3.82C5.86 10.4 5 9.28 5 8zm7 6c-1.65 0-3-1.35-3-3V5h6v6c0 1.65-1.35 3-3 3zm7-6c0 1.28-.86 2.4-2 2.82V7h2v1z"/></svg>',  methods:['GET','POST'],    filter:r=>r.p.startsWith('/prestige')||r.p.startsWith('/legacy')},
     {title:'Stats',              icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg>', methods:['GET'],            filter:r=>r.p==='/stats'},
     {title:'Misc & History',     icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>', methods:['GET','POST'],    filter:r=>['/action/sell_all/{name}','/game/save','/backup','/history/states?n=10','/history/actions?n=50'].includes(r.p)},
-    {title:'Database & IO',      icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3C7.58 3 4 4.79 4 7s3.58 4 8 4 8-1.79 8-4-3.58-4-8-4zM4 9v3c0 2.21 3.58 4 8 4s8-1.79 8-4V9c0 2.21-3.58 4-8 4s-8-1.79-8-4zm0 5v3c0 2.21 3.58 4 8 4s8-1.79 8-4v-3c0 2.21-3.58 4-8 4s-8-1.79-8-4z"/></svg>', methods:['GET','POST'],    filter:r=>r.p.startsWith('/db/')||r.p==='/io'||r.p==='/charts'},
+    {title:'Database & IO',      icon:'<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3C7.58 3 4 4.79 4 7s3.58 4 8 4 8-1.79 8-4-3.58-4-8-4zM4 9v3c0 2.21 3.58 4 8 4s8-1.79 8-4V9c0 2.21-3.58 4-8 4s-8-1.79-8-4zm0 5v3c0 2.21 3.58 4 8 4s8-1.79 8-4v-3c0 2.21-3.58 4-8 4s-8-1.79-8-4z"/></svg>', methods:['GET','POST','DELETE'], filter:r=>r.p.startsWith('/db/')||r.p==='/io'||r.p==='/charts'||r.p==='/saves'},
   ];
 
   const buildingCards = buildings.map(b =>
