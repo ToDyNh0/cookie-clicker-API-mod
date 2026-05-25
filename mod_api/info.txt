@@ -2,10 +2,10 @@
   "Name": "Cookie Bridge",
   "ID": "cookie_ai_bridge",
   "Author": "naibu",
-  "Description": "Exposes complete game state and all actions as HTTP endpoints for AI autoplay. 52 REST endpoints covering buildings, upgrades, minigames (Grimoire, Pantheon, Garden, Stock Market), dragon auras, wrinklers, seasons, prestige/legacy, and more.",
-  "ModVersion": 2.0,
+  "Description": "Exposes complete game state and all actions as HTTP endpoints for AI autoplay. 71 REST endpoints covering buildings, upgrades, minigames (Grimoire, Pantheon, Garden, Stock Market), dragon auras, wrinklers, seasons, prestige/legacy, and more.",
+  "ModVersion": 2.1,
   "GameVersion": "2.052",
-  "Date": "23/05/2026",
+  "Date": "25/05/2026",
   "Dependencies": [],
   "Disabled": 0,
   "AllowSteamAchievs": 0
