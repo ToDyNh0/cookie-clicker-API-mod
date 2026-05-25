@@ -196,8 +196,8 @@ function buildFastState(){
 // ─── Estado lento: campos caros que mudam raramente ────────────────────────
 // Reconstruído a cada ~5s (10 polls × 15 frames) ou logo após qualquer ação.
 function buildSlowState(){
-  function bp(obj,n){var t=0;for(var i=0;i<n;i++)t+=obj.basePrice*Math.pow(1.15,obj.amount+i);return Math.ceil(t);}
-  function sp(obj,n){var t=0;for(var i=0;i<n;i++)t+=obj.basePrice*Math.pow(1.15,obj.amount-1-i)*0.2875;return Math.floor(Math.max(t,0));}
+  function bp(obj,n){var pi=obj.priceIncrease||1.15;var t=0;for(var i=0;i<n;i++)t+=obj.price*Math.pow(pi,i);return Math.ceil(t);}
+  function sp(obj,n){var pi=obj.priceIncrease||1.15;var t=0;for(var i=0;i<n;i++)t+=obj.price/Math.pow(pi,i+1)*0.25;return Math.floor(Math.max(t,0));}
 
   var buildings=(Game.ObjectsById||[]).map(function(o){
     return{id:o.id,name:o.name,amount:o.amount,level:o.level||0,baseCps:o.baseCps,
